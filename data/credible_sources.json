@@ -1,0 +1,47 @@
+{
+    "trusted_domains": [
+        "reuters.com",
+        "apnews.com",
+        "bbc.com",
+        "bbc.co.uk",
+        "theguardian.com",
+        "nytimes.com",
+        "washingtonpost.com",
+        "economist.com",
+        "ft.com",
+        "bloomberg.com",
+        "cnbc.com",
+        "aljazeera.com",
+        "npr.org",
+        "pbs.org",
+        "nature.com",
+        "sciencedaily.com",
+        "thehindu.com",
+        "indianexpress.com",
+        "ndtv.com",
+        "livemint.com",
+        "hindustantimes.com",
+        "timesofindia.indiatimes.com",
+        "moneycontrol.com",
+        "businessstandard.com",
+        "wired.com",
+        "techcrunch.com",
+        "arstechnica.com",
+        "theverge.com",
+        "cnn.com",
+        "abc.net.au"
+    ],
+    "caution_domains": [
+        "buzzfeed.com",
+        "dailymail.co.uk",
+        "nypost.com",
+        "thesun.co.uk",
+        "foxnews.com"
+    ],
+    "blocked_domains": [
+        "infowars.com",
+        "breitbart.com",
+        "naturalnews.com",
+        "beforeitsnews.com"
+    ]
+}

@@ -1,0 +1,70 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+*.pyc
+*.pyo
+
+# ── Virtual Environment ──
+venv/
+.venv/
+env/
+ENV/
+
+# ── Environment Variables ──
+.env
+.env.local
+.env.production
+
+# ── IDE / Editor ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Node / Frontend ──
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Data (generated at runtime) ──
+data/knowledge_store/*.json
+!data/knowledge_store/.gitkeep
+
+# ── Video / Audio (generated at runtime) ──
+*.mp4
+*.mp3
+*.wav
+output/
+
+# ── FAISS indexes (generated at runtime) ──
+*.faiss
+*.pkl
+*.index
+faiss_store/
+
+# ── Test / Coverage ──
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Misc ──
+*.bak
+*.orig
+*.tmp
+*.log
+tmp/
+temp/

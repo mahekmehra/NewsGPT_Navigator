@@ -1,0 +1,20 @@
+{
+    "scenario": "Breaking News - Major Corporate Bankruptcy",
+    "description": "Single breaking news article for Scenario 3 video generation testing",
+    "article": {
+        "title": "Byju's Files for Bankruptcy: India's Once-Largest EdTech Startup Collapses",
+        "description": "Byju's, once valued at $22 billion, files for insolvency as debt mounts to ₹30,000 crore and investors flee.",
+        "content": "In what marks the most dramatic collapse of an Indian startup, Byju's — once India's most valuable startup at $22 billion — has filed for bankruptcy at the National Company Law Tribunal (NCLT) in Bengaluru. The company, founded by Byju Raveendran in 2011, accumulated debts exceeding ₹30,000 crore through aggressive acquisitions including Aakash Educational Services (₹7,300 crore), WhiteHat Jr (₹2,246 crore), and Great Learning (₹600 million). The NCLT has appointed an interim resolution professional (IRP) to manage the company during the insolvency process.\n\nKey creditors include BCCI (₹158 crore in unpaid sponsorship), multiple term loan lenders led by a consortium of banks, and thousands of employees with unpaid salaries totaling ₹800 crore. Over 15,000 employees have been laid off in the past 18 months. The company's last known valuation was $1 billion, down 95% from its peak.\n\nThe collapse has rattled India's startup ecosystem. Sequoia Capital, Tiger Global, and General Atlantic — all major investors — have written off their investments. The Enforcement Directorate is investigating alleged fund diversion of ₹9,000 crore. Founder Byju Raveendran faces a lookout notice and is believed to be in Dubai.\n\nEducation experts warn that 150 million students who used Byju's platform face disruption. The government's DPIIT has formed a task force to address student data protection. SEBI is reviewing the case for potential securities violations.\n\nThis bankruptcy is the largest in India's startup history, surpassing the previous record held by Jet Airways. Industry observers say it marks a turning point for India's startup funding environment, with investors now demanding profitability over growth at all costs.",
+        "source": "Economic Times",
+        "source_domain": "economictimes.com",
+        "url": "https://economictimes.com/byjus-bankruptcy-filing",
+        "published_at": "2025-03-15T06:00:00Z",
+        "breaking": true,
+        "severity": "high",
+        "entities": [
+            "Byju's", "Byju Raveendran", "NCLT", "BCCI", "Sequoia Capital",
+            "Tiger Global", "General Atlantic", "Aakash Educational Services",
+            "WhiteHat Jr", "Great Learning", "SEBI", "DPIIT", "Enforcement Directorate"
+        ]
+    }
+}

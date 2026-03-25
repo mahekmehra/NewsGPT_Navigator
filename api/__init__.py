@@ -1,0 +1,1 @@
+# NewsGPT Navigator — API Package

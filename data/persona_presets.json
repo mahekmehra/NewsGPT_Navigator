@@ -1,0 +1,58 @@
+{
+    "General": {
+        "interests": ["general_news", "current_affairs"],
+        "knowledge_level": "intermediate",
+        "risk_appetite": "moderate",
+        "jargon_comfort": "medium",
+        "preferred_depth": "standard"
+    },
+    "Student": {
+        "interests": ["education", "career", "technology", "startup_ecosystem"],
+        "knowledge_level": "beginner",
+        "risk_appetite": "conservative",
+        "jargon_comfort": "low",
+        "preferred_depth": "brief"
+    },
+    "Investor": {
+        "interests": ["stock_market", "mutual_funds", "corporate_earnings", "global_markets", "policy_changes"],
+        "knowledge_level": "expert",
+        "risk_appetite": "aggressive",
+        "jargon_comfort": "high",
+        "preferred_depth": "detailed"
+    },
+    "Beginner": {
+        "interests": ["general_news", "personal_finance", "savings"],
+        "knowledge_level": "beginner",
+        "risk_appetite": "conservative",
+        "jargon_comfort": "low",
+        "preferred_depth": "brief"
+    },
+    "CFO": {
+        "interests": ["corporate_finance", "taxation", "regulatory_compliance", "capital_markets", "risk_management"],
+        "knowledge_level": "expert",
+        "risk_appetite": "moderate",
+        "jargon_comfort": "high",
+        "preferred_depth": "detailed"
+    },
+    "FirstGen": {
+        "interests": ["basic_investing", "mutual_funds", "savings", "insurance", "personal_finance"],
+        "knowledge_level": "beginner",
+        "risk_appetite": "conservative",
+        "jargon_comfort": "low",
+        "preferred_depth": "standard"
+    },
+    "StartupFounder": {
+        "interests": ["venture_capital", "fundraising", "startup_ecosystem", "policy_changes", "technology", "market_trends"],
+        "knowledge_level": "intermediate",
+        "risk_appetite": "aggressive",
+        "jargon_comfort": "medium",
+        "preferred_depth": "standard"
+    },
+    "Journalist": {
+        "interests": ["breaking_news", "investigative_reporting", "political_economy", "corporate_governance", "public_policy"],
+        "knowledge_level": "expert",
+        "risk_appetite": "moderate",
+        "jargon_comfort": "high",
+        "preferred_depth": "detailed"
+    }
+}

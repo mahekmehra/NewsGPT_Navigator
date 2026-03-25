@@ -1,0 +1,49 @@
+{
+    "articles": [
+        {
+            "title": "AI Regulation Gains Momentum as EU and US Announce Joint Framework",
+            "description": "The European Union and United States have agreed on a joint framework for regulating artificial intelligence, marking a significant step in global AI governance.",
+            "content": "In a landmark development, the European Union and United States announced a joint framework for artificial intelligence regulation during a summit in Brussels. The framework addresses key concerns including algorithmic transparency, bias mitigation, and data privacy protections. Industry leaders have expressed cautious optimism, noting that harmonized rules could reduce compliance costs while ensuring consumer protection. The agreement outlines mandatory risk assessments for high-stakes AI applications in healthcare, finance, and law enforcement. Critics argue the framework may stifle innovation, but proponents say clear rules will actually boost investment by reducing regulatory uncertainty. Implementation is expected to begin in phases over the next 18 months, with a joint oversight committee monitoring compliance.",
+            "source": "Reuters",
+            "source_domain": "reuters.com",
+            "url": "https://reuters.com/technology/ai-regulation-eu-us-framework-2024",
+            "published_at": "2024-12-15T10:30:00Z"
+        },
+        {
+            "title": "India Launches National AI Mission with $1.2 Billion Investment",
+            "description": "The Indian government unveils an ambitious national AI mission aimed at establishing the country as a global AI hub.",
+            "content": "India has announced its National AI Mission with a budget allocation of approximately $1.2 billion over five years. The mission focuses on building AI infrastructure, developing indigenous large language models, and creating a skilled workforce. Key initiatives include setting up AI centres of excellence in 10 cities, establishing a national compute grid, and funding AI research across universities. The government also announced plans for an AI safety framework and regulatory sandbox for startups. Industry body NASSCOM has called the mission a game-changer for India's technology ecosystem. The plan also includes provisions for AI in agriculture, healthcare diagnostics, and smart city management, targeting both urban and rural applications.",
+            "source": "The Hindu",
+            "source_domain": "thehindu.com",
+            "url": "https://thehindu.com/sci-tech/technology/india-national-ai-mission",
+            "published_at": "2024-12-14T08:00:00Z"
+        },
+        {
+            "title": "OpenAI Releases GPT-5 with Enhanced Reasoning Capabilities",
+            "description": "OpenAI's latest model demonstrates significant improvements in mathematical reasoning and code generation.",
+            "content": "OpenAI has released GPT-5, its most capable language model to date, featuring substantial improvements in logical reasoning, mathematical problem-solving, and code generation. Benchmark tests show a 40% improvement over GPT-4 in complex reasoning tasks. The model also demonstrates improved factual accuracy and reduced hallucination rates. Enterprise customers report significant productivity gains in software development and data analysis workflows. However, concerns about AI safety and the pace of development continue to grow among researchers. The model is available through a tiered pricing structure, with a free tier for researchers and educators.",
+            "source": "TechCrunch",
+            "source_domain": "techcrunch.com",
+            "url": "https://techcrunch.com/2024/12/gpt5-release",
+            "published_at": "2024-12-13T14:00:00Z"
+        },
+        {
+            "title": "Climate Summit 2024: Nations Agree on Accelerated Carbon Reduction Targets",
+            "description": "World leaders at COP30 commit to more aggressive carbon emission reduction targets amid worsening climate data.",
+            "content": "At COP30 in Baku, world leaders have agreed on accelerated carbon reduction targets following alarming new climate data showing global temperatures trending above the 1.5°C threshold. The agreement includes mandatory emissions reporting for all nations, a tripling of renewable energy capacity by 2030, and a $500 billion climate finance facility for developing nations. Small island nations praised the strengthened language on loss and damage funding, while major emitters like China and India committed to peak emissions earlier than previously planned. Climate scientists have cautiously welcomed the targets while emphasizing the urgency of implementation.",
+            "source": "BBC News",
+            "source_domain": "bbc.com",
+            "url": "https://bbc.com/news/climate-summit-2024",
+            "published_at": "2024-12-12T16:30:00Z"
+        },
+        {
+            "title": "Global Semiconductor Shortage Eases as New Fabs Come Online",
+            "description": "The worldwide chip shortage that crippled industries is finally showing signs of resolution with new manufacturing facilities.",
+            "content": "The global semiconductor shortage that has impacted everything from automobile production to consumer electronics is showing significant improvement as new fabrication plants come online in Taiwan, the United States, and Germany. TSMC's Arizona fab has begun trial production of advanced 3nm chips, while Intel's Ohio facility is ramping up capacity. Industry analysts predict supply-demand balance will be restored by mid-2025. Meanwhile, governments worldwide continue to invest in domestic chip manufacturing, with total global investment exceeding $300 billion. The automotive industry, which was particularly hard hit, reports improved supply chains and reduced delivery times.",
+            "source": "Bloomberg",
+            "source_domain": "bloomberg.com",
+            "url": "https://bloomberg.com/technology/semiconductor-shortage-easing",
+            "published_at": "2024-12-11T09:15:00Z"
+        }
+    ]
+}
