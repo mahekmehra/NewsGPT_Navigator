@@ -118,7 +118,7 @@ Respond in this exact JSON format:
         return {
             "emotional_register": emotional_register,
             "emotion_calibrated": True,
-            "current_agent": "emotional_calibration",
+            "current_agent": "emotion",
             "error": "",
             "audit_trail": [audit_entry],
         }
@@ -128,7 +128,7 @@ Respond in this exact JSON format:
         return {
             "emotional_register": {},
             "emotion_calibrated": False,
-            "current_agent": "emotional_calibration",
+            "current_agent": "emotion",
             "error": f"Emotional calibration agent error: {e}",
             "audit_trail": [audit_entry],
         }

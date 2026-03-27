@@ -6,22 +6,21 @@ routes to appropriate LLM, performs RAG Q&A, extracts timeline,
 and generates predictions.
 """
 
-import json
 from core.safe_json import safe_json_parse
+from core.config import settings
 from datetime import datetime, timezone
 from agents.state import PipelineState
 
 
 def analysis_agent(state: PipelineState) -> dict:
     """
-    Analysis agent node for the LangGraph pipeline.
+    IMPROVED Analysis Agent (Track 8 Ready)
 
-    - Builds FAISS index from verified articles
-    - Classifies task complexity → routes to 8B or 70B
-    - Runs RAG Q&A for summary generation
-    - Extracts timeline as structured JSON
-    - Generates "what next" prediction
+    - Multi-article synthesis
+    - Structured intelligence output
+    - Audio-ready summary
     """
+
     from core.embeddings import build_index, search, clear_index
     from core.llm_router import classify_complexity, call_llm
 
@@ -39,132 +38,141 @@ def analysis_agent(state: PipelineState) -> dict:
 
     try:
         if not verified_articles:
-            audit_entry["outputs"] = {"error": "No verified articles to analyze"}
             return {
                 "analysis": {},
                 "analysis_success": False,
-                "embeddings_built": False,
                 "current_agent": "analysis",
-                "error": "No verified articles available for analysis",
+                "error": "No verified articles",
                 "audit_trail": [audit_entry],
             }
 
-        # ── Step 1: Build FAISS index ──
+        # ── Build FAISS Index ──
         clear_index()
-        texts = []
-        for art in verified_articles:
-            content = art.get("content", "") or art.get("description", "")
-            title = art.get("title", "")
-            texts.append(f"{title}. {content}")
-
+        texts = [
+            f"{a.get('title', '')}. {a.get('content', '') or a.get('description', '')}"
+            for a in verified_articles
+        ]
         embeddings_built = build_index(texts)
 
-        # ── Step 2: Classify complexity & pick model ──
+        # ── Complexity Routing ──
         complexity = classify_complexity(verified_articles, topic)
 
-        # ── Step 3: RAG — retrieve relevant context ──
+        # ── RAG Retrieval ──
         rag_results = search(topic, top_k=5) if embeddings_built else []
         context = "\n\n---\n\n".join([r["text"] for r in rag_results])
 
-        # ── Step 4: Generate summary via LLM ──
-        summary_prompt = f"""You are an expert news analyst. Based on the following articles about "{topic}", provide:
+        # ── MAIN SYNTHESIS (HACKATHON OPTIMIZED) ──
+        synthesis_prompt = f"""
+Analyze the news about "{topic}" and provide high-value intelligence.
 
-1. A comprehensive summary (3-5 paragraphs)
-2. Key entities mentioned (people, organizations, places)
-3. Overall sentiment (positive/negative/neutral/mixed)
+1. Summary: A professional 3-4 sentence overview of the main event.
+2. Market Impact: Strategic outlook for industries and markets.
+3. Risks: Key threats or negative developments.
+4. Opportunities: Growth potential or positive shifts.
+5. Expert Opinion: Contrast different viewpoints or public narratives.
 
 ARTICLES:
 {context}
 
-Respond in this exact JSON format:
+Respond in STRICT JSON:
 {{
-    "summary": "your comprehensive summary here",
-    "key_entities": ["entity1", "entity2", ...],
-    "sentiment": "positive|negative|neutral|mixed"
+    "summary": "Full overview text...",
+    "key_entities": ["Entity A", "Entity B"],
+    "sentiment": "positive|negative|neutral|mixed",
+    "market_impact": "impact text...",
+    "risks": "risk text...",
+    "opportunities": "opportunity text...",
+    "expert_opinion": "expert text..."
 }}"""
 
-        summary_response = call_llm(
-            prompt=summary_prompt,
-            system_prompt="You are a precise news analyst. Always respond in valid JSON format.",
+        response = call_llm(
+            prompt=synthesis_prompt,
+            system_prompt="Return valid JSON only.",
             complexity=complexity,
         )
 
-        # Parse summary response (resilient)
-        summary_fallback = {
-            "summary": summary_response,
-            "key_entities": [],
-            "sentiment": "neutral",
-        }
-        summary_data = safe_json_parse(summary_response, summary_fallback)
-        if not summary_data.get("summary"):
-            summary_data["summary"] = summary_response
+        data = safe_json_parse(response, {})
 
-        # ── Step 5: Extract timeline ──
-        timeline_prompt = f"""Based on these news articles about "{topic}", extract a chronological timeline of key events.
-
-ARTICLES:
+        # ── Timeline ──
+        timeline_prompt = f"""
+Extract key timeline events from:
 {context}
 
-Respond in this exact JSON format:
-{{
-    "timeline": [
-        {{"date": "YYYY-MM-DD or approximate", "event": "description of event"}},
-        ...
-    ]
-}}"""
+Return JSON:
+{{"timeline":[{{"date":"...","event":"..."}}]}}
+"""
 
-        timeline_response = call_llm(
+        timeline_resp = call_llm(
             prompt=timeline_prompt,
-            system_prompt="You are a chronological event extractor. Always respond in valid JSON.",
+            system_prompt="Return valid JSON.",
             complexity="simple",
         )
 
-        timeline_data = safe_json_parse(timeline_response, {"timeline": [{"date": "N/A", "event": timeline_response[:200]}]})
-        timeline = timeline_data.get("timeline", [])
+        timeline_data = safe_json_parse(timeline_resp, {"timeline": []})
 
-        # ── Step 6: Generate prediction ──
-        prediction_prompt = f"""Based on the current news trends about "{topic}", provide a brief "What Next" prediction (2-3 sentences) about likely future developments.
+        # ── Prediction ──
+        prediction_prompt = f"""
+Based on this:
+{data.get("summary","")[:1000]}
 
-KEY CONTEXT:
-{summary_data.get('summary', '')[:1000]}
-
-Respond with just the prediction text, no JSON needed."""
+Give 2-3 line future prediction.
+"""
 
         prediction = call_llm(
             prompt=prediction_prompt,
-            system_prompt="You are a forward-looking news analyst. Be specific but measured in predictions.",
+            system_prompt="Be realistic and concise.",
             complexity=complexity,
         )
 
-        # ── Assemble result ──
+        # ── Audio-ready summary (PREMIUM UX) ──
+        concise_prompt = f"""
+Summarize this news in UNDER 20 words for smooth voice narration:
+{data.get("summary","")[:1000]}
+"""
+        concise_summary = call_llm(
+            prompt=concise_prompt,
+            system_prompt="Short, one-line, professional narration.",
+            complexity="simple",
+        )
+
+        # ── Sources ──
         sources_used = [
-            {"title": a.get("title", ""), "source": a.get("source", ""), "url": a.get("url", "")}
+            {
+                "title": a.get("title", ""),
+                "source": a.get("source", ""),
+                "url": a.get("url", ""),
+            }
             for a in verified_articles
         ]
 
         analysis_result = {
-            "summary": summary_data.get("summary", ""),
-            "timeline": timeline,
+            "summary": data.get("summary", ""),
+            "concise_summary": concise_summary,
+            "timeline": timeline_data.get("timeline", []),
             "prediction": prediction,
-            "key_entities": summary_data.get("key_entities", []),
-            "sentiment": summary_data.get("sentiment", "neutral"),
+            "key_entities": data.get("key_entities", []),
+            "sentiment": data.get("sentiment", "neutral"),
+
+            # 🔥 NEW STRUCTURED FIELDS
+            "market_impact": data.get("market_impact", ""),
+            "risks": data.get("risks", ""),
+            "opportunities": data.get("opportunities", ""),
+            "expert_opinion": data.get("expert_opinion", ""),
+
             "sources_used": sources_used,
-            "model_used": "llama3-70b" if complexity == "complex" else "llama3-8b",
+            "model_used": settings.POWER_MODEL if complexity == "complex" else settings.FAST_MODEL,
             "complexity_class": complexity,
         }
 
         audit_entry["outputs"] = {
-            "complexity": complexity,
-            "model_used": analysis_result["model_used"],
             "summary_length": len(analysis_result["summary"]),
-            "timeline_events": len(timeline),
-            "entities_found": len(analysis_result["key_entities"]),
+            "has_angles": True,
+            "timeline_events": len(analysis_result["timeline"]),
         }
 
         return {
             "analysis": analysis_result,
             "analysis_success": True,
-            "embeddings_built": embeddings_built,
             "current_agent": "analysis",
             "error": "",
             "audit_trail": [audit_entry],
@@ -175,8 +183,7 @@ Respond with just the prediction text, no JSON needed."""
         return {
             "analysis": {},
             "analysis_success": False,
-            "embeddings_built": False,
             "current_agent": "analysis",
-            "error": f"Analysis agent error: {e}",
+            "error": f"Analysis error: {e}",
             "audit_trail": [audit_entry],
         }

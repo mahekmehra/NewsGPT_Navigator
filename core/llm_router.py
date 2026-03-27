@@ -1,7 +1,7 @@
 """
 NewsGPT Navigator — Smart LLM Router
 
-Routes tasks to llama3-8b (fast/cheap) or llama3-70b (nuanced)
+Routes tasks to llama-3.1-8b-instant (fast) or llama-3.3-70b-versatile (nuanced)
 based on task complexity classification.
 """
 

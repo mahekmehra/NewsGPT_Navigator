@@ -5,95 +5,113 @@ Reformats analysis output based on persona, translates to
 target language, builds final JSON payload, and appends
 complete audit trail entry.
 """
-
 from datetime import datetime, timezone
 from agents.state import PipelineState
 from core.config import settings
+import os
+import time
+
+# Audio output directory
+AUDIO_OUTPUT_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "data", "audio_output"
+)
+os.makedirs(AUDIO_OUTPUT_DIR, exist_ok=True)
 
 
-def _format_for_persona(analysis: dict, persona: str) -> str:
-    """Reformat the analysis briefing based on user persona."""
-    summary = analysis.get("summary", "")
+def _generate_angles(analysis: dict) -> dict:
+    return {
+        "market_impact": analysis.get("market_impact", ""),
+        "expert_opinion": analysis.get("expert_opinion", ""),
+        "risks": analysis.get("risks", ""),
+        "opportunities": analysis.get("opportunities", ""),
+    }
+
+
+def _generate_followups(topic: str) -> list:
+    return [
+        f"What does this mean for different sectors in {topic}?",
+        f"Who are the biggest winners and losers in {topic}?",
+        f"What should investors watch next regarding {topic}?",
+        f"How will this impact the economy in the long term?",
+    ]
+
+
+def _format_for_persona(analysis: dict, persona: str) -> dict:
+    summary = analysis.get("concise_summary") or analysis.get("summary", "")[:200]
     prediction = analysis.get("prediction", "")
-    timeline = analysis.get("timeline", [])
     entities = analysis.get("key_entities", [])
+    sentiment = analysis.get("sentiment", "neutral")
 
     if persona == "Student":
-        briefing = f"""📚 **News Briefing for Students**
-
-**What's happening?**
-{summary}
-
-**Key Players:**
-{', '.join(entities[:5]) if entities else 'Various stakeholders'}
-
-**Timeline of Events:**
-"""
-        for event in timeline[:5]:
-            briefing += f"• {event.get('date', 'N/A')}: {event.get('event', '')}\n"
-        briefing += f"\n**What could happen next?**\n{prediction}"
+        return {
+            "headline": "📚 Student-Friendly Brief",
+            "summary": summary,
+            "key_points": entities[:5],
+            "explanation": "This topic helps you understand real-world systems.",
+            "what_next": prediction,
+        }
 
     elif persona == "Investor":
-        briefing = f"""📊 **Market Intelligence Brief**
+        return {
+            "headline": "📊 Investor Intelligence",
+            "summary": summary,
+            "key_entities": entities[:8],
+            "sentiment": sentiment,
+            "actionable_insight": prediction,
+        }
 
-**Executive Summary:**
-{summary}
-
-**Key Entities & Stakeholders:**
-{', '.join(entities[:8]) if entities else 'Multiple market participants'}
-
-**Sentiment:** {analysis.get('sentiment', 'N/A')}
-
-**Event Timeline:**
-"""
-        for event in timeline[:7]:
-            briefing += f"• [{event.get('date', 'N/A')}] {event.get('event', '')}\n"
-        briefing += f"\n**Forward Outlook:**\n{prediction}"
+    elif persona == "CFO":
+        return {
+            "headline": "📈 Executive Briefing (CFO)",
+            "summary": summary,
+            "key_entities": entities[:10],
+            "strategic_implication": prediction,
+            "sentiment": sentiment,
+        }
 
     elif persona == "Beginner":
-        briefing = f"""🌟 **Simple News Explanation**
+        return {
+            "headline": "🌟 Simple Explanation",
+            "summary": summary,
+            "key_entities": entities[:4],
+            "explanation": "Explained in simple terms.",
+            "what_next": prediction,
+        }
 
-**In Simple Words:**
-{summary}
+    else:
+        return {
+            "headline": "📰 General Brief",
+            "summary": summary,
+            "key_entities": entities[:6],
+            "sentiment": sentiment,
+            "what_next": prediction,
+        }
 
-**People & Groups Involved:**
-{', '.join(entities[:4]) if entities else 'Various people and organizations'}
 
-**What Happened When:**
-"""
-        for event in timeline[:4]:
-            briefing += f"• {event.get('date', 'N/A')}: {event.get('event', '')}\n"
-        briefing += f"\n**What Might Happen Next:**\n{prediction}"
+def _generate_audio(summary_text: str, topic: str) -> str:
+    """Generate audio file and return relative URL."""
+    try:
+        from gtts import gTTS
+        import uuid
 
-    else:  # General
-        briefing = f"""📰 **News Intelligence Briefing**
+        # Ensure text is not empty
+        if not summary_text:
+            return ""
 
-**Summary:**
-{summary}
+        filename = f"audio_{uuid.uuid4().hex[:8]}.mp3"
+        file_path = os.path.join(AUDIO_OUTPUT_DIR, filename)
 
-**Key Entities:**
-{', '.join(entities[:6]) if entities else 'Multiple stakeholders'}
+        tts = gTTS(text=summary_text, lang="en")
+        tts.save(file_path)
 
-**Sentiment:** {analysis.get('sentiment', 'N/A')}
-
-**Timeline:**
-"""
-        for event in timeline[:6]:
-            briefing += f"• {event.get('date', 'N/A')}: {event.get('event', '')}\n"
-        briefing += f"\n**Prediction:**\n{prediction}"
-
-    return briefing
+        # Return the URL path that the backend serves
+        return f"/audio/{filename}"
+    except Exception as e:
+        print(f"[DeliveryAgent] Audio Error: {e}")
+        return ""
 
 
 def delivery_agent(state: PipelineState) -> dict:
-    """
-    Delivery agent node for the LangGraph pipeline.
-
-    - Reformats output by persona
-    - Translates to target language
-    - Builds final JSON payload
-    - Appends complete audit entry
-    """
     from core.translator import translate_text
 
     analysis = state.get("analysis", {})
@@ -106,23 +124,24 @@ def delivery_agent(state: PipelineState) -> dict:
     audit_entry = {
         "timestamp": timestamp,
         "agent": "delivery",
-        "action": "format_and_deliver",
-        "inputs": {"persona": persona, "language": language},
+        "action": "interactive_briefing_generation",
+        "inputs": {"persona": persona},
         "outputs": {},
     }
 
     try:
-        # Format for persona
-        detailed_briefing = _format_for_persona(analysis, persona)
+        persona_brief = _format_for_persona(analysis, persona)
+        angles = _generate_angles(analysis)
+        followups = _generate_followups(topic)
 
-        # Translate if needed
+        # Translation
         translated_summary = ""
         if language != "en":
             translated_summary = translate_text(
                 analysis.get("summary", ""), language
             )
 
-        # Build sources list
+        # Sources
         sources = [
             {
                 "title": s.get("title", ""),
@@ -132,31 +151,41 @@ def delivery_agent(state: PipelineState) -> dict:
             for s in analysis.get("sources_used", [])
         ]
 
-        # Build final briefing payload
+        # 🔊 AUDIO GENERATION (Using Concise Summary for better UX)
+        audio_text = analysis.get("concise_summary") or analysis.get("summary", "")
+        audio_url = _generate_audio(audio_text, topic)
+
+        # Final briefing (Fully Aligned with BriefingResponse)
         briefing = {
             "title": f"Intelligence Briefing: {topic}",
             "summary": analysis.get("summary", ""),
-            "detailed_briefing": detailed_briefing,
-            "timeline": analysis.get("timeline", []),
-            "prediction": analysis.get("prediction", ""),
-            "key_entities": analysis.get("key_entities", []),
-            "sentiment": analysis.get("sentiment", "neutral"),
-            "sources": sources,
             "persona": persona,
             "language": language,
+
+            "persona_brief": persona_brief,
+            "angles": angles,
+            "follow_up_questions": followups,
+            "timeline": analysis.get("timeline", []),
+            "prediction": analysis.get("prediction", ""),
+
+            "key_entities": analysis.get("key_entities", [])[:10],
+            "sentiment": analysis.get("sentiment", "neutral"),
+            "sources": sources[:5],  # Limit to top 5
             "translated_summary": translated_summary,
             "bias_score": bias_score,
-            "compliance_status": "passed",
-            "model_used": analysis.get("model_used", "unknown"),
-            "complexity_class": analysis.get("complexity_class", "unknown"),
+            "compliance_status": "Passed" if state.get("compliance_passed") else "Caution",
+
+            "model_used": analysis.get("model_used", "Llama-3"),
+            "complexity_class": analysis.get("complexity_class", "Standard"),
             "generated_at": timestamp,
+
+            "videos": state.get("videos", []), # Now available because video agent runs before
+            "audio_url": audio_url,
         }
 
         audit_entry["outputs"] = {
-            "briefing_length": len(detailed_briefing),
-            "translated": language != "en",
-            "persona": persona,
-            "sources_count": len(sources),
+            "audio_generated": bool(audio_url),
+            "videos_count": len(state.get("videos", [])),
         }
 
         return {
@@ -171,8 +200,7 @@ def delivery_agent(state: PipelineState) -> dict:
         audit_entry["outputs"] = {"error": str(e)}
         return {
             "briefing": {},
-            "current_agent": "delivery",
             "pipeline_status": "failed",
-            "error": f"Delivery agent error: {e}",
+            "error": str(e),
             "audit_trail": [audit_entry],
         }

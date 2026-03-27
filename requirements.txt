@@ -10,6 +10,7 @@ groq>=0.9.0
 # Embeddings & vector store
 sentence-transformers>=3.0.0
 faiss-cpu>=1.8.0
+numpy>=1.24.0
 
 # News fetching
 requests>=2.31.0
@@ -25,10 +26,8 @@ pydantic>=2.7.0
 # Config
 python-dotenv>=1.0.0
 
-# Video generation pipeline
-Pillow>=10.0.0
+# Audio generation
 gTTS>=2.4.0
-moviepy>=1.0.3
 
 # Testing
 pytest>=8.0.0

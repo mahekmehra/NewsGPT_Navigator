@@ -4,7 +4,6 @@ Tests for surprise scenario readiness.
 Covers:
 - safe_json_parse resilience
 - Custom persona handling
-- Multilingual video routing
 - Story arc data structure
 - Agent graceful degradation
 """
@@ -126,35 +125,10 @@ class TestCustomPersona:
         state = create_initial_state(topic="test")
         assert state["story_arc"] == []
 
-
-# ── Multilingual video routing tests ──
-
-class TestMultilingualVideo:
-    """Test video agent language configuration."""
-
-    def test_lang_config_exists(self):
-        from agents.video_agent import LANG_CONFIG
-        assert "hi" in LANG_CONFIG
-        assert "ta" in LANG_CONFIG
-        assert "te" in LANG_CONFIG
-        assert "bn" in LANG_CONFIG
-
-    def test_lang_config_structure(self):
-        from agents.video_agent import LANG_CONFIG
-        for code, cfg in LANG_CONFIG.items():
-            assert "name" in cfg
-            assert "script" in cfg
-            assert "gtts_code" in cfg
-
-    def test_hindi_config(self):
-        from agents.video_agent import LANG_CONFIG
-        assert LANG_CONFIG["hi"]["name"] == "Hindi"
-        assert LANG_CONFIG["hi"]["gtts_code"] == "hi"
-
-    def test_tamil_config(self):
-        from agents.video_agent import LANG_CONFIG
-        assert LANG_CONFIG["ta"]["name"] == "Tamil"
-        assert LANG_CONFIG["ta"]["gtts_code"] == "ta"
+    def test_state_with_persona_context(self):
+        from agents.state import create_initial_state
+        state = create_initial_state(topic="test")
+        assert state["persona_context"] == ""
 
 
 # ── Agent import tests (smoke test) ──
@@ -197,10 +171,6 @@ class TestAgentImports:
     def test_import_delivery_agent(self):
         from agents.delivery_agent import delivery_agent
         assert callable(delivery_agent)
-
-    def test_import_knowledge_diff(self):
-        from agents.knowledge_diff_agent import knowledge_diff_agent
-        assert callable(knowledge_diff_agent)
 
     def test_import_video_agent(self):
         from agents.video_agent import video_agent

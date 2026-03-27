@@ -48,6 +48,7 @@ def test_create_initial_state():
     assert state["video_generated"] == False
     assert state["custom_persona"] == ""
     assert state["story_arc"] == []
+    assert state["persona_context"] == ""
 
 
 def test_create_state_with_custom_params():

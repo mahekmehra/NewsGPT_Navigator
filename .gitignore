@@ -38,8 +38,13 @@ frontend/.vite/
 # ── Data (generated at runtime) ──
 data/knowledge_store/*.json
 !data/knowledge_store/.gitkeep
+data/history.json
 
 # ── Video / Audio (generated at runtime) ──
+data/video_output/*.mp4
+!data/video_output/.gitkeep
+data/audio_output/*.mp3
+!data/audio_output/.gitkeep
 *.mp4
 *.mp3
 *.wav

@@ -41,7 +41,7 @@ def angle_agent(state: PipelineState) -> dict:
             return {
                 "angle_clusters": [],
                 "angle_indexes_built": False,
-                "current_agent": "angle_decomposition",
+                "current_agent": "angle",
                 "audit_trail": [audit_entry],
             }
 
@@ -123,7 +123,7 @@ Respond in this exact JSON format:
         return {
             "angle_clusters": angle_clusters,
             "angle_indexes_built": indexes_built,
-            "current_agent": "angle_decomposition",
+            "current_agent": "angle",
             "error": "",
             "audit_trail": [audit_entry],
         }
@@ -133,7 +133,7 @@ Respond in this exact JSON format:
         return {
             "angle_clusters": [],
             "angle_indexes_built": False,
-            "current_agent": "angle_decomposition",
+            "current_agent": "angle",
             "error": f"Angle decomposition agent error: {e}",
             "audit_trail": [audit_entry],
         }

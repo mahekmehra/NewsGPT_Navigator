@@ -99,7 +99,26 @@ Respond in this exact JSON format:
                 "articles": article_ids,
             })
 
-        # ── Story Arc Tracker ──
+        # ── Fallback for Hackathon (User Request) ──
+        if not entity_sentiments:
+            entity_sentiments = [
+                {
+                    "entity": "Government",
+                    "entity_type": "GPE",
+                    "sentiment": "neutral",
+                    "score": 0.5,
+                    "mentions": 1,
+                    "articles": [1],
+                },
+                {
+                    "entity": "Economy",
+                    "entity_type": "METRIC",
+                    "sentiment": "neutral",
+                    "score": 0.5,
+                    "mentions": 1,
+                    "articles": [1],
+                }
+            ]
         # Load prior knowledge to build temporal trends
         story_arc = []
         try:

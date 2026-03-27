@@ -2,56 +2,64 @@
 NewsGPT Navigator — Pydantic Schemas
 
 Request/response models for the FastAPI backend.
-Supports all 11 agents.
+Supports all 10 agents.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 
 class AnalyzeRequest(BaseModel):
-    """Request to analyze a news topic."""
-    topic: str = Field(..., description="News topic to analyze", min_length=2, max_length=200)
-    persona: str = Field(default="General", description="User persona: Student, Investor, Beginner, General, CFO, FirstGen")
-    custom_persona: str = Field(default="", description="Free-text custom persona description (e.g. 'startup founder', 'journalist')")
-    language: str = Field(default="en", description="Target language code (e.g., 'en', 'hi', 'ta', 'te', 'bn')")
-    knowledge_session_id: str = Field(default="", description="Session ID for knowledge state tracking")
+    topic: str = Field(..., min_length=2, max_length=200)
+    persona: str = "General"
+    custom_persona: str = ""
+    language: str = "en"
+    knowledge_session_id: str = ""
 
+
+# ─────────────────────────────
+# COMMON STRUCTURES
+# ─────────────────────────────
 
 class SourceInfo(BaseModel):
-    """A news source reference."""
     title: str = ""
     source: str = ""
     url: str = ""
 
 
 class TimelineEvent(BaseModel):
-    """A timeline event."""
     date: str = ""
     event: str = ""
 
 
+class VideoItem(BaseModel):
+    title: str = ""
+    url: str = ""
+    thumbnail: str = ""
+
+
+# ─────────────────────────────
+# AGENT RESPONSES
+# ─────────────────────────────
+
 class EntitySentimentResponse(BaseModel):
-    """Per-entity sentiment data."""
     entity: str = ""
     entity_type: str = ""
     sentiment: str = "neutral"
     score: float = 0.0
     mentions: int = 0
-    articles: list = []
+    articles: List[Any] = []
 
 
 class AngleClusterResponse(BaseModel):
-    """A narrative angle cluster."""
     angle_id: int = 0
     label: str = ""
-    article_ids: list = []
+    article_ids: List[Any] = []
     summary: str = ""
     article_count: int = 0
 
 
 class ConflictResponse(BaseModel):
-    """A narrative conflict."""
     conflict_type: str = ""
     claim_a: str = ""
     source_a: str = ""
@@ -63,17 +71,15 @@ class ConflictResponse(BaseModel):
 
 
 class EmotionalRegisterResponse(BaseModel):
-    """Emotional register data."""
     register: str = "neutral"
     intensity: float = 0.0
     tone_guidance: str = ""
-    crisis_signals: list = []
-    opportunity_signals: list = []
-    uncertainty_signals: list = []
+    crisis_signals: List[str] = []
+    opportunity_signals: List[str] = []
+    uncertainty_signals: List[str] = []
 
 
 class KnowledgeDiffResponse(BaseModel):
-    """A knowledge diff item."""
     entity: str = ""
     status: str = ""
     detail: str = ""
@@ -82,7 +88,7 @@ class KnowledgeDiffResponse(BaseModel):
 
 
 class VideoOutputResponse(BaseModel):
-    """Video generation output."""
+    # kept for backward compatibility
     script_hindi: str = ""
     script_english: str = ""
     script_language: str = "Hindi"
@@ -94,85 +100,102 @@ class VideoOutputResponse(BaseModel):
 
 
 class StoryArcResponse(BaseModel):
-    """A story arc entry showing temporal sentiment trend."""
     entity: str = ""
     entity_type: str = ""
-    trend: list = []
+    trend: List[Any] = []
     shift: str = ""
     first_seen: str = ""
     latest_update: str = ""
 
 
 class UserProfileResponse(BaseModel):
-    """User profile data."""
     persona_preset: str = ""
-    interests: list = []
+    interests: List[str] = []
     knowledge_level: str = ""
     risk_appetite: str = ""
     jargon_comfort: str = ""
     preferred_depth: str = ""
 
 
+# ─────────────────────────────
+# 🔥 UPDATED BRIEFING (IMPORTANT)
+# ─────────────────────────────
+
 class BriefingResponse(BaseModel):
-    """Full briefing response."""
     title: str = ""
     summary: str = ""
-    detailed_briefing: str = ""
-    timeline: list = []
+
+    # 🔥 NEW (CORE EXPERIENCE)
+    persona_brief: Dict[str, Any] = {}
+    angles: Dict[str, str] = {}
+    follow_up_questions: List[str] = []
+
+    # Content
+    timeline: List[TimelineEvent] = []
     prediction: str = ""
-    key_entities: list = []
+
+    # Metadata
+    key_entities: List[str] = []
     sentiment: str = "neutral"
-    sources: list = []
+    sources: List[SourceInfo] = []
+
+    # Personalization
     persona: str = "General"
     language: str = "en"
     translated_summary: str = ""
+
+    # Extra intelligence
     bias_score: float = 0.0
     compliance_status: str = ""
+
+    # Model info
     model_used: str = ""
     complexity_class: str = ""
     generated_at: str = ""
 
+    # 🔥 MULTIMODAL FEATURES
+    videos: List[VideoItem] = []
+    audio_url: Optional[str] = None
+
+
+# ─────────────────────────────
+# MAIN RESPONSE
+# ─────────────────────────────
 
 class AnalyzeResponse(BaseModel):
-    """Complete pipeline response with all 11 agents' output."""
     success: bool
+
     briefing: Optional[BriefingResponse] = None
-    # New agent outputs
-    entity_sentiments: list = []
-    angle_clusters: list = []
+
+    # Agent outputs
+    entity_sentiments: List[Any] = []
+    angle_clusters: List[Any] = []
     user_profile: Optional[UserProfileResponse] = None
-    conflicts: list = []
+    conflicts: List[Any] = []
     emotional_register: Optional[EmotionalRegisterResponse] = None
-    knowledge_diff: list = []
+    knowledge_diff: List[Any] = []
     video_output: Optional[VideoOutputResponse] = None
-    story_arc: list = []
+    story_arc: List[Any] = []
+
     # Metadata
-    audit_trail: list = []
+    audit_trail: List[Any] = []
     error: str = ""
     pipeline_status: str = ""
+
+    # Stats
     articles_fetched: int = 0
     articles_verified: int = 0
+    verified_articles: List[Any] = []
 
 
-class AuditResponse(BaseModel):
-    """Audit trail response."""
-    topic: str = ""
-    audit_trail: list = []
-    total_entries: int = 0
 
 
 class HealthResponse(BaseModel):
-    """Health check response."""
     status: str = "ok"
-    version: str = "2.0.0"
-    agents: list = [
-        "orchestrator", "fetch", "entity_sentiment", "angle_decomposition",
-        "analysis", "compliance", "profile_ranking", "conflict",
-        "emotional_calibration", "delivery", "knowledge_diff", "video"
-    ]
+    version: str = "2.1.0"
+    agents: List[str] = []
 
 
 class LanguageInfo(BaseModel):
-    """Supported language info."""
     code: str
     name: str

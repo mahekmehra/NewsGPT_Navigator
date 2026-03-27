@@ -115,6 +115,9 @@ def fetch_agent(state: PipelineState) -> dict:
             # Filter: quality threshold AND not blocked
             if score >= settings.QUALITY_THRESHOLD and is_source_acceptable(domain):
                 verified_articles.append(article)
+        
+        # Enforce limit (User Request)
+        verified_articles = verified_articles[:6]
 
         audit_entry["outputs"] = {
             "total_fetched": len(raw_articles),

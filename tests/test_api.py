@@ -42,13 +42,3 @@ def test_get_personas():
     assert "Investor" in names
 
 
-def test_get_sessions_empty():
-    """Sessions endpoint should return empty list initially."""
-    response = client.get("/sessions")
-    assert response.status_code == 200
-
-
-def test_audit_not_found():
-    """Audit endpoint should 404 for unknown session."""
-    response = client.get("/audit/nonexistent-id")
-    assert response.status_code == 404
