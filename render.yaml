@@ -19,5 +19,5 @@ services:
         value: "3"
       - key: PORT
         value: "10000"
-    healthCheckPath: /health
+    healthCheckPath: /api/health
     autoDeploy: true

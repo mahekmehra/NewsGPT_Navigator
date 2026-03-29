@@ -14,12 +14,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/health': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/analyze': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/languages': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/personas': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/audio': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/video': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
     },
   },
 })

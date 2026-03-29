@@ -16,7 +16,7 @@ from typing import Any, Dict, Tuple
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from agents.delivery_agent import AUDIO_OUTPUT_DIR
 
@@ -296,18 +296,6 @@ async def get_personas():
 
 
 app.include_router(api)
-
-
-@app.get("/", include_in_schema=False)
-async def root_health():
-    """
-    Ultra-lightweight root route.
-
-    Render should still use /api/health for health checks, but this
-    guarantees a fast JSON response on / even before the SPA build
-    exists.
-    """
-    return JSONResponse({"status": "ok", "service": "newsgpt-backend"})
 
 
 # Serve the React frontend build (if available)
