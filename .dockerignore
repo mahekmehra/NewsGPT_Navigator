@@ -1,0 +1,41 @@
+# ── Python ──
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Node / Frontend ──
+web/node_modules/
+web/dist/
+web/.vite/
+
+# ── Environment & Keys ──
+.env
+.env.local
+.env.production
+*.pem
+*.key
+
+# ── Runtime Data ──
+data/audio_output/*.mp3
+data/knowledge_store/*.json
+data/history.json
+*.faiss
+*.pkl
+*.index
+
+# ── IDE / OS ──
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.git/
+.gitignore
+README.md
+LICENSE
+docs/

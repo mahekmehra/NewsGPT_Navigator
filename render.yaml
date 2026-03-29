@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: newsgpt-navigator
+    runtime: docker
+    plan: free
+    region: oregon # Render's most common region, fallback to Oregon
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+        placeholder: "Insert your Groq API Key"
+      - key: NEWS_API_KEY
+        sync: false
+        placeholder: "Insert your NewsAPI.org Key"
+      - key: QUALITY_THRESHOLD
+        value: "0.4"
+      - key: BIAS_THRESHOLD
+        value: "0.3"
+      - key: MAX_RETRIES
+        value: "3"
+      - key: PORT
+        value: "10000"
+    healthCheckPath: /health
+    autoDeploy: true
