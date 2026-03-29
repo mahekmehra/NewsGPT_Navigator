@@ -16,14 +16,26 @@ _documents = []
 
 def _get_model():
     """
-    Lazy-load the sentence-transformer model as a singleton.
-    Returns the loaded model, which consumes significant RAM (~200MB).
+    Strictly lazy-load the sentence-transformer model as a singleton.
+    This ensures no RAM is used until the model is actually needed.
     """
     global _model
     if _model is None:
-        print("[Embeddings] Loading SentenceTransformer model (RAM Intensive)...")
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer(settings.EMBEDDING_MODEL)
+        print(f"[Embeddings] First Use: Loading {settings.EMBEDDING_MODEL} (RAM expected ~200MB+)...")
+        # Local imports ensure this doesn't block app initialization
+        try:
+            from sentence_transformers import SentenceTransformer
+            import torch
+            
+            # Disable gradients calculation to save memory during inference
+            torch.set_grad_enabled(False)
+            
+            _model = SentenceTransformer(settings.EMBEDDING_MODEL)
+            print(f"[Embeddings] Model {settings.EMBEDDING_MODEL} loaded successfully.")
+        except Exception as e:
+            print(f"[Embeddings] FATAL: Failed to load model: {e}")
+            raise RuntimeError(f"Model load failed: {e}")
+            
     return _model
 
 

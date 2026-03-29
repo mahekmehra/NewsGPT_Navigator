@@ -51,9 +51,15 @@ app.add_middleware(
 _sessions: dict = {}
 
 
+@app.get("/")
+async def root_health():
+    """Lightweight root health check for deployment platforms."""
+    return {"status": "ok", "message": "NewsGPT Navigator API is live"}
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """System health check — returns agent list and version."""
+    """Detailed system health check."""
     return HealthResponse(
         status="ok",
         version="2.1.0",
