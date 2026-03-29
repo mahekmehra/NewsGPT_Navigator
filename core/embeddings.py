@@ -15,9 +15,13 @@ _documents = []
 
 
 def _get_model():
-    """Lazy-load the sentence-transformer model."""
+    """
+    Lazy-load the sentence-transformer model as a singleton.
+    Returns the loaded model, which consumes significant RAM (~200MB).
+    """
     global _model
     if _model is None:
+        print("[Embeddings] Loading SentenceTransformer model (RAM Intensive)...")
         from sentence_transformers import SentenceTransformer
         _model = SentenceTransformer(settings.EMBEDDING_MODEL)
     return _model

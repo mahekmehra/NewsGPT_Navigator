@@ -41,6 +41,6 @@ EXPOSE 10000
 # Start the application using Gunicorn with Uvicorn workers
 CMD ["gunicorn", "api.main:app", \
      "--bind", "0.0.0.0:10000", \
-     "--workers", "4", \
+     "--workers", "1", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--timeout", "120"]
