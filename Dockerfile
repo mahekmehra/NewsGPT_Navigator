@@ -35,6 +35,10 @@ COPY data/ ./data/
 # Copy the built frontend from the previous stage
 COPY --from=build-stage /app/web/dist ./web/dist
 
+# Pre-download the embedding model during build (avoids runtime HF Hub issues)
+ENV TRANSFORMERS_CACHE=/app/data/hf_cache
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
 # Expose the default Render port
 EXPOSE 10000
 
@@ -43,4 +47,4 @@ CMD ["gunicorn", "api.main:app", \
      "--bind", "0.0.0.0:10000", \
      "--workers", "1", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--timeout", "120"]
+     "--timeout", "300"]
