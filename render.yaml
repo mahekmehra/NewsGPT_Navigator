@@ -1,9 +1,11 @@
 services:
   - type: web
     name: newsgpt-navigator
-    runtime: docker
+    runtime: python
     plan: free
     region: oregon # Render's most common region, fallback to Oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn api.main:app -k uvicorn.workers.UvicornWorker --workers 1 --threads 2 --timeout 120
     envVars:
       - key: GROQ_API_KEY
         sync: false
@@ -17,7 +19,5 @@ services:
         value: "0.3"
       - key: MAX_RETRIES
         value: "3"
-      - key: PORT
-        value: "10000"
     healthCheckPath: /api/health
     autoDeploy: true
