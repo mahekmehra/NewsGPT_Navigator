@@ -37,7 +37,7 @@ COPY --from=build-stage /app/web/dist ./web/dist
 
 # Pre-download the embedding model during build (avoids runtime HF Hub issues)
 ENV TRANSFORMERS_CACHE=/app/data/hf_cache
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L3-v2')"
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-MiniLM-L3-v2')"
 
 # Expose the default Render port
 EXPOSE 10000

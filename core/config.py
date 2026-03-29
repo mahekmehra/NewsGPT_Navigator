@@ -35,7 +35,7 @@ class Settings:
     MAX_ARTICLES: int = 20
 
     # ── Embeddings ──
-    EMBEDDING_MODEL: str = "all-MiniLM-L3-v2"  # Lighter (~45MB) model for Render Free Tier
+    EMBEDDING_MODEL: str = "paraphrase-MiniLM-L3-v2"  # Lighter (~45MB) model for Render Free Tier
     TOP_K_RESULTS: int = 5
 
     # ── Translation ──
