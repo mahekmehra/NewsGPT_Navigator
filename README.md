@@ -25,11 +25,11 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    FastAPI Backend                       │
-│                   (api/main.py)                          │
+│              FastAPI Backend                            │
+│              (api/main.py)                              │
 ├─────────────────────────────────────────────────────────┤
-│              LangGraph Orchestrator                      │
-│             (agents/orchestrator.py)                     │
+│             LangGraph Orchestrator                      │
+│            (agents/orchestrator.py)                     │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  Fetch → Entity/Sentiment → Angle → Analysis →          │
@@ -37,7 +37,7 @@
 │  Emotion → Video → Delivery                             │
 │                                                         │
 ├─────────────────────────────────────────────────────────┤
-│  Core: LLM Router │ Embeddings │ Credibility │ Translator│
+│Core: LLM Router │ Embeddings │ Credibility │ Translator │
 └─────────────────────────────────────────────────────────┘
 ```
 
