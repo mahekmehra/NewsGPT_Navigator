@@ -1,9 +1,9 @@
 """
 NewsGPT Navigator — Fetch Agent
 
-Calls NewsAPI for articles on the given topic.
-Scores each article for quality (relevance + recency + length).
-Validates source credibility. Falls back to sample JSON silently.
+Ingests news articles from NewsAPI (with fallback to local samples),
+scores each article for quality (relevance + recency + content length),
+validates source credibility, and enforces domain diversity.
 """
 
 from datetime import datetime, timezone
@@ -96,43 +96,84 @@ def fetch_agent(state: PipelineState) -> dict:
                 "audit_trail": [audit_entry],
             }
 
-        # Score and filter articles
+        # Score and calculate credibility for articles
         scored_articles = []
         quality_scores = []
-        verified_articles = []
-
+        
         for article in raw_articles:
             score = _score_article(article, topic)
             article["quality_score"] = score
-            scored_articles.append(article)
-            quality_scores.append(score)
-
-            # Check credibility
+            
             domain = article.get("source_domain", "")
             cred = check_credibility(domain)
             article["credibility_verified"] = cred["credibility"] == "trusted"
+            article["credibility_score"] = cred.get("score", 0.5)
+            
+            scored_articles.append(article)
+            quality_scores.append(score)
 
-            # Filter: quality threshold AND not blocked
-            if score >= settings.QUALITY_THRESHOLD and is_source_acceptable(domain):
-                verified_articles.append(article)
+        # Filter: Ignore sources below 0.6 (unless no alternatives exist)
+        reliable_candidates = [
+            a for a in scored_articles
+            if a["credibility_score"] >= 0.6
+            and a["quality_score"] >= settings.QUALITY_THRESHOLD
+            and is_source_acceptable(a.get("source_domain", ""))
+        ]
         
-        # Enforce limit (User Request)
-        verified_articles = verified_articles[:6]
+        if reliable_candidates:
+            verified_articles = reliable_candidates
+            source_quality_summary = f"High reliability. Filtered {len(verified_articles)} sources with credibility score ≥ 0.6."
+        else:
+            # Fallback to previously accepted baseline
+            verified_articles = [
+                a for a in scored_articles
+                if a["quality_score"] >= settings.QUALITY_THRESHOLD
+                and is_source_acceptable(a.get("source_domain", ""))
+            ]
+            source_quality_summary = "Low reliability. Insufficient highly credible sources found; fell back to available alternatives."
+        
+        # Enforce domain diversity (at least 3 unique domains)
+        diversity_limit = 3
+        domain_groups = {}
+        for a in verified_articles:
+            d = a.get("source_domain", "unknown")
+            if d not in domain_groups:
+                domain_groups[d] = []
+            domain_groups[d].append(a)
+        
+        diverse_articles = []
+        # First pass: pick top scored from each unique domain
+        sorted_domains = sorted(domain_groups.keys(), key=lambda d: max([x["quality_score"] for x in domain_groups[d]]), reverse=True)
+        
+        for d in sorted_domains:
+            if len(diverse_articles) < 6:
+                diverse_articles.append(domain_groups[d][0])
+        
+        # Second pass: fill up to 6 with remaining top articles if diversity target already hit
+        if len(diverse_articles) < 6:
+            remaining = []
+            for d in sorted_domains:
+                remaining.extend(domain_groups[d][1:])
+            remaining.sort(key=lambda x: x["quality_score"], reverse=True)
+            diverse_articles.extend(remaining[:6 - len(diverse_articles)])
 
         audit_entry["outputs"] = {
             "total_fetched": len(raw_articles),
-            "verified_count": len(verified_articles),
+            "verified_count": len(diverse_articles),
+            "unique_domains": len(set(a.get("source_domain") for a in diverse_articles)),
             "avg_quality": round(sum(quality_scores) / len(quality_scores), 3) if quality_scores else 0,
+            "source_quality_summary": source_quality_summary
         }
 
         return {
             "articles": scored_articles,
             "quality_scores": quality_scores,
-            "verified_articles": verified_articles,
-            "fetch_success": len(verified_articles) > 0,
+            "verified_articles": diverse_articles,
+            "fetch_success": len(diverse_articles) > 0,
             "current_agent": "fetch",
             "error": "",
             "audit_trail": [audit_entry],
+            "source_quality_summary": source_quality_summary,
         }
 
     except Exception as e:

@@ -1,11 +1,11 @@
 """
-Tests for surprise scenario readiness.
+Tests for resilience and edge-case handling.
 
 Covers:
 - safe_json_parse resilience
 - Custom persona handling
 - Story arc data structure
-- Agent graceful degradation
+- Agent import smoke tests
 """
 
 import pytest

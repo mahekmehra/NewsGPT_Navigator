@@ -1,3 +1,11 @@
+"""
+NewsGPT Navigator — Video Agent
+
+Fetches relevant YouTube video links for the analyzed topic
+using lightweight HTML scraping (no API key required).
+Returns video titles, URLs, and thumbnail images.
+"""
+
 import re
 import requests
 from datetime import datetime, timezone
@@ -21,14 +29,22 @@ def _generate_video_links(topic: str) -> list:
             raise Exception(f"YouTube search failed with status {response.status_code}")
 
         html = response.text
-        # Regex to find video IDs: watch?v=XXXXXXXXXXX
-        video_ids = re.findall(r"watch\?v=(\S{11})", html)
+        # More robust regex for YouTube video IDs and TITLES from search results
+        # IDs: /watch?v=XXXXXXXXXXX
+        # Titles: "title":{"runs":[{"text":"VIDEO_TITLE"}]}
+        video_ids = re.findall(r'/watch\?v=([a-zA-Z0-9_-]{11})', html)
+        video_titles = re.findall(r'"title":\{"runs":\[\{"text":"([^"]+)"\}\]', html)
 
         # Unique IDs only
         unique_ids = []
-        for vid in video_ids:
+        titles_map = {}
+        
+        for i, vid in enumerate(video_ids):
             if vid not in unique_ids:
                 unique_ids.append(vid)
+                # Map title to ID if possible (titles usually follow IDs in search response)
+                if i < len(video_titles):
+                    titles_map[vid] = video_titles[i]
             if len(unique_ids) >= 3:
                 break
 
@@ -36,9 +52,19 @@ def _generate_video_links(topic: str) -> list:
             raise Exception("No video IDs found in search results")
 
         videos = []
+        fallback_templates = [
+            f"{topic} Explained",
+            f"{topic} Latest Update",
+            f"{topic} Expert Analysis"
+        ]
+
         for i, vid in enumerate(unique_ids):
+            title = titles_map.get(vid)
+            if not title or len(title) < 5:
+                title = fallback_templates[i] if i < len(fallback_templates) else f"{topic} Analysis"
+            
             videos.append({
-                "title": f"Video {i+1}: {topic}",
+                "title": title,
                 "url": f"https://www.youtube.com/watch?v={vid}",
                 "thumbnail": f"https://img.youtube.com/vi/{vid}/0.jpg"
             })

@@ -1,10 +1,9 @@
 """
-NewsGPT Navigator — Orchestrator Agent (LangGraph StateGraph)
+NewsGPT Navigator — Orchestrator (LangGraph StateGraph)
 
-The brain. Builds the directed acyclic graph, manages conditional edges,
-decides retry vs abort, routes between all 10 agents.
-Runs the full pipeline with a single `pipeline.invoke(initial_state)` call.
-No human needed at any point.
+Builds the directed acyclic graph that connects all 10 agents,
+manages conditional retry/abort edges, and exposes a single
+`run_pipeline()` entry point that drives the full analysis flow.
 """
 
 from langgraph.graph import StateGraph, END
@@ -22,9 +21,10 @@ from agents.video_agent import video_agent
 from core.config import settings
 
 
-# ── Conditional Edge Functions ──
+# ── Conditional Edge Functions ──────────────────────────────────────
 
 def should_retry_fetch(state: PipelineState) -> str:
+    """Decide whether to retry fetch, proceed, or abort."""
     fetch_success = state.get("fetch_success", False)
     retry_count = state.get("retry_count", 0)
     max_retries = state.get("max_retries", settings.MAX_RETRIES)
@@ -37,6 +37,7 @@ def should_retry_fetch(state: PipelineState) -> str:
 
 
 def should_retry_analysis(state: PipelineState) -> str:
+    """Decide whether to re-analyze, proceed, or deliver with warning."""
     compliance_passed = state.get("compliance_passed", False)
     retry_count = state.get("retry_count", 0)
     max_retries = state.get("max_retries", settings.MAX_RETRIES)
@@ -48,9 +49,10 @@ def should_retry_analysis(state: PipelineState) -> str:
     return "profile_ranking"
 
 
-# ── Retry Nodes ──
+# ── Control-Flow Nodes ──────────────────────────────────────────────
 
 def retry_fetch_node(state: PipelineState) -> dict:
+    """Increment retry counter before looping back to fetch."""
     return {
         "retry_count": state.get("retry_count", 0) + 1,
         "current_agent": "orchestrator",
@@ -58,6 +60,7 @@ def retry_fetch_node(state: PipelineState) -> dict:
 
 
 def reanalyze_node(state: PipelineState) -> dict:
+    """Increment retry counter before looping back to analysis."""
     return {
         "retry_count": state.get("retry_count", 0) + 1,
         "current_agent": "orchestrator",
@@ -65,6 +68,7 @@ def reanalyze_node(state: PipelineState) -> dict:
 
 
 def abort_node(state: PipelineState) -> dict:
+    """Terminate the pipeline after exhausting retries."""
     return {
         "pipeline_status": "failed",
         "current_agent": "orchestrator",
@@ -73,24 +77,25 @@ def abort_node(state: PipelineState) -> dict:
 
 
 def deliver_with_warning_node(state: PipelineState) -> dict:
+    """Continue to delivery despite compliance failure (with warning flag)."""
     return {
         "current_agent": "orchestrator",
     }
 
 
-# ── Build Graph ──
+# ── Graph Construction ──────────────────────────────────────────────
 
 def build_pipeline() -> StateGraph:
     """
-    Cleaned & Optimized Pipeline (Track 8 Ready)
+    Build the 10-agent LangGraph pipeline.
 
     Flow:
-    Fetch → Enrich → Analyze → Personalize → Deliver → Video
+        Fetch → Entity/Sentiment → Angle → Analysis → Compliance
+        → Profile/Ranking → Conflict → Emotion → Video → Delivery
     """
-
     graph = StateGraph(PipelineState)
 
-    # Core Nodes
+    # Register agent nodes
     graph.add_node("fetch", fetch_agent)
     graph.add_node("retry_fetch", retry_fetch_node)
     graph.add_node("entity_sentiment", entity_sentiment_agent)
@@ -106,10 +111,10 @@ def build_pipeline() -> StateGraph:
     graph.add_node("deliver_with_warning", deliver_with_warning_node)
     graph.add_node("abort", abort_node)
 
-    # Entry
+    # Entry point
     graph.set_entry_point("fetch")
 
-    # Fetch → retry or proceed
+    # Fetch → retry / entity_sentiment / abort
     graph.add_conditional_edges(
         "fetch",
         should_retry_fetch,
@@ -119,17 +124,16 @@ def build_pipeline() -> StateGraph:
             "abort": "abort",
         }
     )
-
     graph.add_edge("retry_fetch", "fetch")
 
-    # Enrichment Phase
+    # Enrichment phase
     graph.add_edge("entity_sentiment", "angle")
 
-    # Analysis Phase
+    # Analysis phase
     graph.add_edge("angle", "analysis")
     graph.add_edge("analysis", "compliance")
 
-    # Compliance handling
+    # Compliance → reanalyze / profile_ranking / deliver_with_warning
     graph.add_conditional_edges(
         "compliance",
         should_retry_analysis,
@@ -139,28 +143,25 @@ def build_pipeline() -> StateGraph:
             "deliver_with_warning": "deliver_with_warning",
         }
     )
-
     graph.add_edge("reanalyze", "analysis")
 
-    # Personalization Phase
+    # Personalization phase
     graph.add_edge("profile_ranking", "conflict")
     graph.add_edge("conflict", "emotion")
 
-    # Delivery Phase
+    # Delivery phase
     graph.add_edge("emotion", "video")
     graph.add_edge("deliver_with_warning", "video")
-
-    # Final Briefing
     graph.add_edge("video", "delivery")
 
-    # End
+    # Terminal edges
     graph.add_edge("delivery", END)
     graph.add_edge("abort", END)
 
     return graph
 
 
-# Compile
+# Compile the graph once at module load
 pipeline = build_pipeline().compile()
 
 
@@ -171,7 +172,19 @@ def run_pipeline(
     knowledge_session_id: str = "",
     custom_persona: str = "",
 ) -> dict:
+    """
+    Execute the full 10-agent pipeline for a given topic.
 
+    Args:
+        topic: News topic to analyze
+        persona: Persona preset name
+        language: Target language code
+        knowledge_session_id: Session ID for story arc persistence
+        custom_persona: Free-text persona description
+
+    Returns:
+        Complete pipeline state as a dict
+    """
     initial_state = create_initial_state(
         topic=topic,
         persona=persona,

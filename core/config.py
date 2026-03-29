@@ -52,8 +52,8 @@ class Settings:
 
     # ── Personas ──
     PERSONA_PROMPTS: dict = {
-        "Student": "Explain in simple, clear language suitable for a college student. Use analogies and examples.",
-        "Investor": "Focus on market impact, financial implications, and data-driven insights. Be concise and actionable.",
+        "Student": "Explain in simple, clear language suitable for a college student. Use analogies and examples. Focus on learning through explanation of concepts.",
+        "Investor": "Focus on market impact, financial implications, risks, and opportunities. Provide actionable insights with a data-driven outlook.",
         "CFO": "Focus on macroeconomic impact, financial risk, regulatory compliance, and strategic implications for executive decision-making.",
         "Beginner": "Use very simple language, avoid jargon, explain every concept. Suitable for someone new to the topic.",
         "General": "Provide a balanced, comprehensive briefing suitable for a general professional audience.",

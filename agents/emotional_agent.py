@@ -1,8 +1,9 @@
 """
-NewsGPT Navigator — Emotional Calibration Agent (UNIQUE)
+NewsGPT Navigator — Emotional Calibration Agent
 
-Detects crisis/opportunity/uncertainty register.
-Calibrates tone for video + vernacular delivery.
+Detects the emotional register of news coverage (crisis, opportunity,
+uncertainty, neutral), measures intensity, and generates tone guidance
+for downstream briefing delivery.
 """
 
 import json
@@ -33,7 +34,7 @@ def emotional_agent(state: PipelineState) -> dict:
 
     audit_entry = {
         "timestamp": timestamp,
-        "agent": "emotional_calibration",
+        "agent": "emotion",
         "action": "calibrate_emotional_register",
         "inputs": {"topic": topic},
         "outputs": {},
@@ -69,14 +70,14 @@ OVERALL SENTIMENT: {sentiment}
 {sentiment_summary}
 
 Determine:
-1. The dominant emotional register: crisis / opportunity / uncertainty / neutral
+1. The dominant emotional register (emotion_type): crisis / opportunity / uncertainty / neutral
 2. Intensity (0.0 to 1.0) — how strongly this register is felt
 3. Specific signals that indicate this register
 4. Tone guidance for how a presenter should deliver this news
 
 Respond in this exact JSON format:
 {{
-    "register": "opportunity",
+    "emotion_type": "opportunity",
     "intensity": 0.7,
     "tone_guidance": "Emphasize the positive developments while noting cautionary elements. Use an optimistic but measured tone.",
     "crisis_signals": [],
@@ -92,7 +93,7 @@ Respond in this exact JSON format:
 
         # Parse response (resilient)
         emotional_fallback = {
-            "register": "neutral",
+            "emotion_type": "neutral",
             "intensity": 0.3,
             "tone_guidance": "Deliver in a balanced, informative tone.",
             "crisis_signals": [],
@@ -102,7 +103,7 @@ Respond in this exact JSON format:
         emotional_data = safe_json_parse(response, emotional_fallback)
 
         emotional_register = {
-            "register": emotional_data.get("register", "neutral"),
+            "emotion_type": emotional_data.get("emotion_type", "neutral"),
             "intensity": float(emotional_data.get("intensity", 0.3)),
             "tone_guidance": emotional_data.get("tone_guidance", ""),
             "crisis_signals": emotional_data.get("crisis_signals", []),
@@ -111,7 +112,7 @@ Respond in this exact JSON format:
         }
 
         audit_entry["outputs"] = {
-            "register": emotional_register["register"],
+            "emotion_type": emotional_register["emotion_type"],
             "intensity": emotional_register["intensity"],
         }
 

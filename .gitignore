@@ -31,20 +31,20 @@ ENV/
 
 # ── Node / Frontend ──
 node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+web/node_modules/
+web/dist/
+web/.vite/
 
 # ── Data (generated at runtime) ──
 data/knowledge_store/*.json
 !data/knowledge_store/.gitkeep
 data/history.json
 
-# ── Video / Audio (generated at runtime) ──
-data/video_output/*.mp4
-!data/video_output/.gitkeep
+# ── Audio / Video (generated at runtime) ──
 data/audio_output/*.mp3
 !data/audio_output/.gitkeep
+data/video_output/*.mp4
+!data/video_output/.gitkeep
 *.mp4
 *.mp3
 *.wav

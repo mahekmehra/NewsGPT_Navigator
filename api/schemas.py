@@ -1,15 +1,18 @@
 """
 NewsGPT Navigator — Pydantic Schemas
 
-Request/response models for the FastAPI backend.
-Supports all 10 agents.
+Request and response models for the FastAPI backend.
+Covers all 10 agents in the intelligence pipeline.
 """
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 
+# ── Request ─────────────────────────────────────────────────────────
+
 class AnalyzeRequest(BaseModel):
+    """Request body for the /analyze endpoint."""
     topic: str = Field(..., min_length=2, max_length=200)
     persona: str = "General"
     custom_persona: str = ""
@@ -17,32 +20,34 @@ class AnalyzeRequest(BaseModel):
     knowledge_session_id: str = ""
 
 
-# ─────────────────────────────
-# COMMON STRUCTURES
-# ─────────────────────────────
+# ── Shared Sub-Models ───────────────────────────────────────────────
 
 class SourceInfo(BaseModel):
+    """A news source reference."""
     title: str = ""
     source: str = ""
     url: str = ""
 
 
 class TimelineEvent(BaseModel):
+    """A single timeline event extracted from articles."""
     date: str = ""
     event: str = ""
+    source_title: str = ""
+    url: str = ""
 
 
 class VideoItem(BaseModel):
+    """A YouTube video link with thumbnail."""
     title: str = ""
     url: str = ""
     thumbnail: str = ""
 
 
-# ─────────────────────────────
-# AGENT RESPONSES
-# ─────────────────────────────
+# ── Agent Output Models ─────────────────────────────────────────────
 
 class EntitySentimentResponse(BaseModel):
+    """Entity with sentiment tagging from the Entity Sentiment agent."""
     entity: str = ""
     entity_type: str = ""
     sentiment: str = "neutral"
@@ -52,6 +57,7 @@ class EntitySentimentResponse(BaseModel):
 
 
 class AngleClusterResponse(BaseModel):
+    """A narrative angle cluster from the Angle Decomposition agent."""
     angle_id: int = 0
     label: str = ""
     article_ids: List[Any] = []
@@ -60,6 +66,7 @@ class AngleClusterResponse(BaseModel):
 
 
 class ConflictResponse(BaseModel):
+    """A detected narrative conflict from the Conflict agent."""
     conflict_type: str = ""
     claim_a: str = ""
     source_a: str = ""
@@ -71,7 +78,8 @@ class ConflictResponse(BaseModel):
 
 
 class EmotionalRegisterResponse(BaseModel):
-    register: str = "neutral"
+    """Emotional calibration output from the Emotion agent."""
+    emotion_type: str = "neutral"
     intensity: float = 0.0
     tone_guidance: str = ""
     crisis_signals: List[str] = []
@@ -79,27 +87,8 @@ class EmotionalRegisterResponse(BaseModel):
     uncertainty_signals: List[str] = []
 
 
-class KnowledgeDiffResponse(BaseModel):
-    entity: str = ""
-    status: str = ""
-    detail: str = ""
-    previous_value: str = ""
-    current_value: str = ""
-
-
-class VideoOutputResponse(BaseModel):
-    # kept for backward compatibility
-    script_hindi: str = ""
-    script_english: str = ""
-    script_language: str = "Hindi"
-    audio_path: str = ""
-    video_path: str = ""
-    duration_seconds: float = 0.0
-    generation_time: float = 0.0
-    jargon_cleaned: bool = False
-
-
 class StoryArcResponse(BaseModel):
+    """Temporal sentiment trend for a single entity."""
     entity: str = ""
     entity_type: str = ""
     trend: List[Any] = []
@@ -109,6 +98,7 @@ class StoryArcResponse(BaseModel):
 
 
 class UserProfileResponse(BaseModel):
+    """User profile built by the Profile Ranking agent."""
     persona_preset: str = ""
     interests: List[str] = []
     knowledge_level: str = ""
@@ -117,15 +107,14 @@ class UserProfileResponse(BaseModel):
     preferred_depth: str = ""
 
 
-# ─────────────────────────────
-# 🔥 UPDATED BRIEFING (IMPORTANT)
-# ─────────────────────────────
+# ── Briefing Response ───────────────────────────────────────────────
 
 class BriefingResponse(BaseModel):
+    """Complete intelligence briefing assembled by the Delivery agent."""
     title: str = ""
     summary: str = ""
 
-    # 🔥 NEW (CORE EXPERIENCE)
+    # Persona-specific intelligence
     persona_brief: Dict[str, Any] = {}
     angles: Dict[str, str] = {}
     follow_up_questions: List[str] = []
@@ -144,7 +133,7 @@ class BriefingResponse(BaseModel):
     language: str = "en"
     translated_summary: str = ""
 
-    # Extra intelligence
+    # Compliance
     bias_score: float = 0.0
     compliance_status: str = ""
 
@@ -153,16 +142,16 @@ class BriefingResponse(BaseModel):
     complexity_class: str = ""
     generated_at: str = ""
 
-    # 🔥 MULTIMODAL FEATURES
+    # Multimodal outputs
     videos: List[VideoItem] = []
     audio_url: Optional[str] = None
+    entities_metadata: List[Any] = []
 
 
-# ─────────────────────────────
-# MAIN RESPONSE
-# ─────────────────────────────
+# ── Main Response ───────────────────────────────────────────────────
 
 class AnalyzeResponse(BaseModel):
+    """Full response from the /analyze endpoint."""
     success: bool
 
     briefing: Optional[BriefingResponse] = None
@@ -173,8 +162,6 @@ class AnalyzeResponse(BaseModel):
     user_profile: Optional[UserProfileResponse] = None
     conflicts: List[Any] = []
     emotional_register: Optional[EmotionalRegisterResponse] = None
-    knowledge_diff: List[Any] = []
-    video_output: Optional[VideoOutputResponse] = None
     story_arc: List[Any] = []
 
     # Metadata
@@ -182,20 +169,22 @@ class AnalyzeResponse(BaseModel):
     error: str = ""
     pipeline_status: str = ""
 
-    # Stats
+    # Article stats
     articles_fetched: int = 0
     articles_verified: int = 0
     verified_articles: List[Any] = []
 
 
-
+# ── Utility Models ──────────────────────────────────────────────────
 
 class HealthResponse(BaseModel):
+    """Response from the /health endpoint."""
     status: str = "ok"
     version: str = "2.1.0"
     agents: List[str] = []
 
 
 class LanguageInfo(BaseModel):
+    """A supported language entry."""
     code: str
     name: str

@@ -1,20 +1,23 @@
-# 🧠 NewsGPT Navigator (Victory Edition)
+# 🧠 NewsGPT Navigator
 
-**AI-Native News Intelligence Engine** — An autonomous 10-agent intelligence platform that transforms raw news into structured, multimodal briefings. Orchestrated via LangGraph for a production-grade, hackathon-winning experience.
+**AI-Powered News Intelligence Engine** — A 10-agent autonomous platform that transforms raw news into structured, persona-tailored, multilingual intelligence briefings. Built with LangGraph, Groq LLMs, and FAISS vector search.
 
 ---
 
-## 🚀 Victory Features
+## ✨ Key Features
 
 | Feature | Description |
 |---------|-------------|
-| **Multi-Agent Flow** | 10 specialized agents working in a perfect DAG (Fetch → Video → Delivery) |
-| **Professional Audio** | gTTS-powered voice narration for every briefing (Concise & Clear) |
-| **Dynamic Video** | Real-time YouTube scraping for analysis & thumbnails (No API keys needed) |
+| **10-Agent Pipeline** | Specialized agents in a LangGraph DAG — from ingestion to delivery |
+| **Persona Briefings** | LLM-generated briefs tailored per persona (Investor, CFO, Student, etc.) |
+| **Audio Narration** | gTTS-powered voice briefings with multilingual support |
+| **YouTube Integration** | Dynamic video scraping — titles, links, thumbnails (no API key needed) |
 | **Entity Story Arcs** | NER + per-entity sentiment tracking across sessions |
-| **Conflict & Emotion** | surfacing narrative contradictions and emotional register |
+| **Conflict Detection** | Surfaces factual, interpretive, and predictive contradictions |
+| **Emotional Calibration** | Crisis/Opportunity/Uncertainty register with tone guidance |
 | **RAG Synthesis** | FAISS-powered cross-source reasoning for zero-duplication insights |
-| **Clean API** | Streamlined FastAPI surface optimized for React frontend integration |
+| **Bias & Compliance** | Real-time sensationalism, political skew, and source credibility checks |
+| **Multilingual** | Supports English + 7 Indian languages (Hindi, Punjabi, Tamil, Bengali, Telugu, Kannada, Marathi) |
 
 ---
 
@@ -22,74 +25,154 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    FastAPI Backend                        │
-│                   (api/main.py)                           │
+│                    FastAPI Backend                       │
+│                   (api/main.py)                          │
 ├─────────────────────────────────────────────────────────┤
-│              LangGraph Orchestrator                       │
-│             (agents/orchestrator.py)                      │
+│              LangGraph Orchestrator                      │
+│             (agents/orchestrator.py)                     │
 ├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  Fetch → Entity/Sentiment → Angle → Analysis →           │
-│  Compliance → Profile/Ranking → Conflict →                │
-│  Emotion → Video → Delivery                               │
-│                                                           │
+│                                                         │
+│  Fetch → Entity/Sentiment → Angle → Analysis →          │
+│  Compliance → Profile/Ranking → Conflict →              │
+│  Emotion → Video → Delivery                             │
+│                                                         │
 ├─────────────────────────────────────────────────────────┤
-│  Core: LLM Router │ Embeddings │ Credibility │ Translator │
+│  Core: LLM Router │ Embeddings │ Credibility │ Translator│
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### The 10 AI Agents
 
-1. **Fetch**: Multi-source ingestion + Quality/Credibility scoring.
-2. **Entity Sentiment**: NER + Sentiment tagging + Story Arc trends.
-3. **Angle Decomposition**: Narrative clustering + FAISS index builds.
-4. **Analysis**: RAG-based synthesis with structured metadata.
-5. **Compliance**: Sensationalism & bias filtering.
-6. **Profile Ranking**: Persona-specific content tailoring.
-7. **Conflict**: Surfacing factual and interpretive contradictions.
-8. **Emotional Calibration**: Crisis/Opportunity detection & Tone guidance.
-9. **Video**: Dynamic YouTube scraping for analysis & thumbnails.
-10. **Delivery**: Final persona briefing + Translation + Audio generation.
+| # | Agent | Role |
+|---|-------|------|
+| 1 | **Fetch** | Multi-source ingestion + quality/credibility scoring |
+| 2 | **Entity Sentiment** | NER + sentiment tagging + story arc trends |
+| 3 | **Angle Decomposition** | Narrative clustering + per-angle FAISS indexes |
+| 4 | **Analysis** | RAG-based synthesis with structured metadata |
+| 5 | **Compliance** | Sensationalism & bias filtering (score threshold) |
+| 6 | **Profile Ranking** | Persona-specific content tailoring & ranking |
+| 7 | **Conflict** | Factual, interpretive, and predictive conflict detection |
+| 8 | **Emotional Calibration** | Crisis/Opportunity detection & tone guidance |
+| 9 | **Video** | Dynamic YouTube scraping for links & thumbnails |
+| 10 | **Delivery** | Final persona brief + translation + audio generation |
 
 ---
 
-## 📁 Storage & Assets
+## 📁 Project Structure
 
-- `data/audio_output/`: Stores generated MP3 voice narrations.
-- `data/video_output/`: Stores video-related metadata.
-- `data/knowledge_store/`: Persistent session memory for Story Arcs.
-- `core/`: High-performance utilities (LLM Routing, Vector Search).
+```
+news-gpt/
+├── agents/                 # 10 LangGraph agent nodes + orchestrator
+│   ├── orchestrator.py     # DAG builder & pipeline entry point
+│   ├── state.py            # Shared TypedDict state schema
+│   ├── fetch_agent.py
+│   ├── entity_sentiment_agent.py
+│   ├── angle_agent.py
+│   ├── analysis_agent.py
+│   ├── compliance_agent.py
+│   ├── profile_ranking_agent.py
+│   ├── conflict_agent.py
+│   ├── emotional_agent.py
+│   ├── video_agent.py
+│   └── delivery_agent.py
+├── api/                    # FastAPI backend
+│   ├── main.py             # Endpoints & static file serving
+│   └── schemas.py          # Pydantic request/response models
+├── core/                   # Shared utilities
+│   ├── config.py           # Settings from .env
+│   ├── llm_router.py       # Smart Groq model routing
+│   ├── embeddings.py       # Sentence-transformers + FAISS
+│   ├── credibility.py      # Source credibility checker
+│   ├── news_fetcher.py     # NewsAPI client + fallback
+│   ├── safe_json.py        # Resilient LLM JSON parser
+│   └── translator.py       # Multi-language translation
+├── data/                   # Runtime data & static assets
+│   ├── credible_sources.json
+│   ├── sample_articles.json
+│   ├── audio_output/       # Generated MP3 narrations
+│   ├── video_output/       # Video metadata
+│   └── knowledge_store/    # Session memory for story arcs
+├── web/                    # React + Vite frontend
+│   ├── src/
+│   └── dist/               # Production build (gitignored)
+├── tests/                  # Pytest test suite
+├── requirements.txt        # Python dependencies
+├── .env.example            # Environment variable template
+└── README.md
+```
 
 ---
 
 ## ⚡ Quick Start
 
-### 1. Setup
+### 1. Clone & Setup
+
 ```bash
+git clone https://github.com/your-username/news-gpt.git
+cd news-gpt
+
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+
+# Activate (Windows)
+venv\Scripts\activate
+
+# Activate (macOS/Linux)
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Keys
-Edit `.env` with `GROQ_API_KEY` and `NEWS_API_KEY`.
+### 2. Configure API Keys
 
-### 3. Run
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your keys:
+- **`GROQ_API_KEY`** — Free at [console.groq.com](https://console.groq.com)
+- **`NEWS_API_KEY`** — Free at [newsapi.org](https://newsapi.org)
+
+### 3. Run the Backend
+
 ```bash
 uvicorn api.main:app --reload
 ```
 
+The API will be available at `http://localhost:8000`.
+
+### 4. Run the Frontend (Development)
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:5173` with API proxy to the backend.
+
+### 5. Build Frontend for Production
+
+```bash
+cd web
+npm run build
+```
+
+The built files are served automatically by the backend at `/`.
+
 ---
 
-## 📡 Essential Endpoints
+## 📡 API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/analyze` | Run full 10-agent pipeline |
-| `GET` | `/audio/{file}`| Serve voice narration MP3s |
-| `GET` | `/health` | System status & Agent readiness |
-| `GET` | `/languages` | Supported translation codes |
-| `GET` | `/personas` | Pre-configured intelligence presets |
+| `POST` | `/analyze` | Run the full 10-agent pipeline |
+| `GET` | `/audio/{file}` | Serve generated audio narrations |
+| `GET` | `/video/{file}` | Serve video files |
+| `GET` | `/health` | System status & agent readiness |
+| `GET` | `/languages` | Supported translation languages |
+| `GET` | `/personas` | Available persona presets |
 
 ### Example Request
 
@@ -97,7 +180,7 @@ uvicorn api.main:app --reload
 curl -X POST http://localhost:8000/analyze \
   -H "Content-Type: application/json" \
   -d '{
-    "topic": "Union Budget 2025",
+    "topic": "AI Regulation 2026",
     "persona": "Investor",
     "language": "en"
   }'
@@ -105,25 +188,26 @@ curl -X POST http://localhost:8000/analyze \
 
 ---
 
-## 🎯 Demo Flow
+## 🧪 Running Tests
 
-1. **Topic**: Enter "Union Budget 2025" or "AI Regulation"
-2. **Persona Switch**: Compare **Investor** view vs **Student** view
-3. **Key Outputs**: Summary → Angles → Timeline → Prediction → Follow-up Questions
-4. **Multimedia**: Audio narration + YouTube links
-5. **Intelligence**: Conflict detection + Emotional calibration
+```bash
+python -m pytest tests/ -v
+```
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Orchestration**: LangGraph (StateGraph DAG)
-- **LLM**: Groq (Llama 3.1 8B / Llama 3.3 70B with smart routing)
-- **Embeddings**: Sentence-Transformers + FAISS
-- **Backend**: FastAPI + Pydantic
-- **Audio**: gTTS
-- **Translation**: deep-translator (Google Translate)
-- **News**: NewsAPI
+| Layer | Technology |
+|-------|-----------|
+| **Orchestration** | LangGraph (StateGraph DAG) |
+| **LLM** | Groq (Llama 3.1 8B / Llama 3.3 70B with smart routing) |
+| **Embeddings** | Sentence-Transformers + FAISS |
+| **Backend** | FastAPI + Pydantic |
+| **Frontend** | React + TypeScript + Vite + Tailwind CSS |
+| **Audio** | gTTS (Google Text-to-Speech) |
+| **Translation** | deep-translator (Google Translate) |
+| **News** | NewsAPI |
 
 ---
 

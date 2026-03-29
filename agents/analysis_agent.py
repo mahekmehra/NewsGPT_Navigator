@@ -14,11 +14,13 @@ from agents.state import PipelineState
 
 def analysis_agent(state: PipelineState) -> dict:
     """
-    IMPROVED Analysis Agent (Track 8 Ready)
+    Analysis agent node for the LangGraph pipeline.
 
-    - Multi-article synthesis
-    - Structured intelligence output
-    - Audio-ready summary
+    - Builds FAISS vectorstore from verified articles
+    - Routes to appropriate LLM based on complexity classification
+    - Performs RAG-based multi-article synthesis
+    - Extracts timeline events with source mapping
+    - Generates predictions and audio-ready summaries
     """
 
     from core.embeddings import build_index, search, clear_index
@@ -61,7 +63,7 @@ def analysis_agent(state: PipelineState) -> dict:
         rag_results = search(topic, top_k=5) if embeddings_built else []
         context = "\n\n---\n\n".join([r["text"] for r in rag_results])
 
-        # ── MAIN SYNTHESIS (HACKATHON OPTIMIZED) ──
+        # Main synthesis prompt
         synthesis_prompt = f"""
 Analyze the news about "{topic}" and provide high-value intelligence.
 
@@ -93,22 +95,41 @@ Respond in STRICT JSON:
 
         data = safe_json_parse(response, {})
 
-        # ── Timeline ──
+        # ── Timeline (with Source Mapping) ──
         timeline_prompt = f"""
-Extract key timeline events from:
-{context}
+        Extract key timeline events from:
+        {context}
 
-Return JSON:
-{{"timeline":[{{"date":"...","event":"..."}}]}}
-"""
+        For each event, specify which article it comes from (provide a short title or index).
+        Return JSON:
+        {{"timeline":[{{"date":"...","event":"...", "source_hint":"..."}}]}}
+        """
 
         timeline_resp = call_llm(
             prompt=timeline_prompt,
-            system_prompt="Return valid JSON.",
+            system_prompt="Return valid JSON. Be accurate with dates.",
             complexity="simple",
         )
 
         timeline_data = safe_json_parse(timeline_resp, {"timeline": []})
+        timeline = timeline_data.get("timeline", [])
+        
+        # Map timeline to Article (Source Title + URL)
+        for ev in timeline:
+            hint = ev.get("source_hint", "").lower()
+            ev["url"] = ""
+            ev["source_title"] = ""
+            for a in verified_articles:
+                if hint and (hint in a.get("title", "").lower() or hint in a.get("source", "").lower()):
+                    ev["url"] = a.get("url", "")
+                    ev["source_title"] = a.get("title", "")
+                    break
+            if not ev["url"] and verified_articles:
+                ev["url"] = verified_articles[0].get("url", "")
+                ev["source_title"] = verified_articles[0].get("title", "")
+        
+        if not timeline:
+            timeline = [{"date": "N/A", "event": "No major timeline events available", "source_title": "N/A", "url": ""}]
 
         # ── Prediction ──
         prediction_prompt = f"""
@@ -124,7 +145,7 @@ Give 2-3 line future prediction.
             complexity=complexity,
         )
 
-        # ── Audio-ready summary (PREMIUM UX) ──
+        # Audio-ready concise summary
         concise_prompt = f"""
 Summarize this news in UNDER 20 words for smooth voice narration:
 {data.get("summary","")[:1000]}
@@ -134,6 +155,33 @@ Summarize this news in UNDER 20 words for smooth voice narration:
             system_prompt="Short, one-line, professional narration.",
             complexity="simple",
         )
+
+        # ── Entities with Article Links ──
+        entities_metadata = []
+        for ent in data.get("key_entities", []):
+            entity_articles = []
+            # Find up to 2 articles mentioning this entity
+            for a in sorted(verified_articles, key=lambda x: x.get("quality_score", 0), reverse=True):
+                content_to_check = (a.get("title", "") + " " + (a.get("content", "") or a.get("description", "") or "")).lower()
+                if ent.lower() in content_to_check:
+                    entity_articles.append({
+                        "title": a.get("title", ""),
+                        "url": a.get("url", "")
+                    })
+                if len(entity_articles) >= 2:
+                    break
+            
+            # Fallback to first article if none found
+            if not entity_articles and verified_articles:
+                entity_articles.append({
+                    "title": verified_articles[0].get("title", ""),
+                    "url": verified_articles[0].get("url", "")
+                })
+            
+            entities_metadata.append({
+                "entity": ent,
+                "entity_articles": entity_articles
+            })
 
         # ── Sources ──
         sources_used = [
@@ -148,12 +196,13 @@ Summarize this news in UNDER 20 words for smooth voice narration:
         analysis_result = {
             "summary": data.get("summary", ""),
             "concise_summary": concise_summary,
-            "timeline": timeline_data.get("timeline", []),
+            "timeline": timeline,
             "prediction": prediction,
             "key_entities": data.get("key_entities", []),
+            "entities_metadata": entities_metadata,
             "sentiment": data.get("sentiment", "neutral"),
 
-            # 🔥 NEW STRUCTURED FIELDS
+            # Structured intelligence fields
             "market_impact": data.get("market_impact", ""),
             "risks": data.get("risks", ""),
             "opportunities": data.get("opportunities", ""),

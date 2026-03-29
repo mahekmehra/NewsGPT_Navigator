@@ -1,8 +1,9 @@
 """
 NewsGPT Navigator — Angle Decomposition Agent
 
-Clusters articles by narrative angle. Builds per-angle FAISS indexes.
-Transformation step 2.
+Clusters verified articles by narrative angle via LLM,
+labels each cluster, and builds per-angle FAISS indexes
+for downstream RAG retrieval.
 """
 
 import json
@@ -29,7 +30,7 @@ def angle_agent(state: PipelineState) -> dict:
 
     audit_entry = {
         "timestamp": timestamp,
-        "agent": "angle_decomposition",
+        "agent": "angle",
         "action": "cluster_by_angle",
         "inputs": {"topic": topic, "article_count": len(verified_articles)},
         "outputs": {},

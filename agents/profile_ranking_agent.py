@@ -1,11 +1,11 @@
 """
-NewsGPT Navigator — User Profile + Ranking Agent
+NewsGPT Navigator — Profile Ranking Agent
 
-Builds deep user profile from persona presets.
-Ranks content by profile. Selects persona prompt template.
+Builds a user profile from persona presets, ranks articles
+by persona-specific interests, and selects a persona prompt
+template for downstream briefing generation.
 """
 
-# Simplified imports — only what's used
 from datetime import datetime, timezone
 from agents.state import PipelineState
 
@@ -22,11 +22,11 @@ def _score_article(article: dict, interests: list) -> int:
 
 def profile_ranking_agent(state: PipelineState) -> dict:
     """
-    IMPROVED Profile Ranking Agent (Track 8 Ready)
+    Profile ranking agent node for the LangGraph pipeline.
 
-    - Strong persona differentiation
-    - Fast deterministic ranking
-    - CFO vs Student handling
+    - Builds user profile from persona presets
+    - Ranks articles by persona interest keywords
+    - Selects persona-specific prompt template and context
     """
 
     persona = state.get("persona", "General")
@@ -43,7 +43,7 @@ def profile_ranking_agent(state: PipelineState) -> dict:
     }
 
     try:
-        # ── Persona Profiles (STRONG DIFFERENTIATION) ──
+        # Persona profiles (strong differentiation per persona)
         persona_profiles = {
             "CFO": {
                 "persona_preset": "CFO",
@@ -89,14 +89,14 @@ def profile_ranking_agent(state: PipelineState) -> dict:
 
         user_profile = persona_profiles.get(persona, persona_profiles["General"])
 
-        # ── Ranking (FAST + RELIABLE) ──
+        # Ranking: sort articles by keyword relevance to persona interests
         ranked_articles = sorted(
             verified_articles,
             key=lambda art: _score_article(art, user_profile["interests"]),
             reverse=True,
         )
 
-        # ── Persona Templates (VERY IMPORTANT) ──
+        # Persona prompt templates for delivery agent
         persona_templates = {
             "CFO": "Focus on macroeconomic impact, financial risk, and strategic implications.",
             "Investor": "Highlight market movements, opportunities, and risks.",
@@ -107,7 +107,7 @@ def profile_ranking_agent(state: PipelineState) -> dict:
 
         persona_template = persona_templates.get(persona, "Balanced explanation")
 
-        # ── NEW: Persona Impact Layer (CRITICAL FOR JUDGING) ──
+        # Persona-specific context for briefing personalization
         persona_context = {
             "CFO": f"As a CFO, this impacts strategic financial planning and risk exposure in {topic}.",
             "Investor": f"As an investor, this could affect your portfolio and market opportunities in {topic}.",

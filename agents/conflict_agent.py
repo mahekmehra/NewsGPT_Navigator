@@ -1,8 +1,8 @@
 """
-NewsGPT Navigator — Narrative Conflict Agent (UNIQUE)
+NewsGPT Navigator — Conflict Detection Agent
 
-Detects where articles disagree. Surfaces factual,
-interpretive, and predictive conflicts.
+Detects factual, interpretive, and predictive conflicts
+across multiple news articles covering the same topic.
 """
 
 import json

@@ -1,13 +1,14 @@
 # NewsGPT Navigator — Python Dependencies
+# Install: pip install -r requirements.txt
 
-# LangGraph orchestration
+# LangGraph pipeline orchestration
 langgraph>=0.2.0
 langchain-core>=0.3.0
 
-# LLM (Groq - free tier)
+# LLM inference (Groq — free tier)
 groq>=0.9.0
 
-# Embeddings & vector store
+# Embeddings & vector store (RAG)
 sentence-transformers>=3.0.0
 faiss-cpu>=1.8.0
 numpy>=1.24.0
@@ -15,18 +16,18 @@ numpy>=1.24.0
 # News fetching
 requests>=2.31.0
 
-# Translation
+# Translation (Google Translate wrapper)
 deep-translator>=1.11.0
 
-# Backend
+# Backend framework
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 pydantic>=2.7.0
 
-# Config
+# Configuration
 python-dotenv>=1.0.0
 
-# Audio generation
+# Audio narration
 gTTS>=2.4.0
 
 # Testing

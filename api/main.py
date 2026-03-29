@@ -1,19 +1,27 @@
 """
 NewsGPT Navigator — FastAPI Backend
 
-Main API server with endpoints for topic analysis, audit trail
-retrieval, system health checks, and video serving.
-Supports all 10 agents.
+Main API server with endpoints for topic analysis, audio/video
+serving, system health checks, and configuration queries.
+Orchestrates the full 10-agent LangGraph pipeline.
 """
 
 import uuid
 import os
-import json
+from pathlib import Path
 from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from agents.delivery_agent import AUDIO_OUTPUT_DIR
+
+VIDEO_OUTPUT_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "data", "video_output"
+)
+os.makedirs(VIDEO_OUTPUT_DIR, exist_ok=True)
+
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
 from api.schemas import (
     AnalyzeRequest,
@@ -22,7 +30,6 @@ from api.schemas import (
     HealthResponse,
     UserProfileResponse,
     EmotionalRegisterResponse,
-    VideoOutputResponse,
 )
 from core.config import settings
 
@@ -40,11 +47,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# In-memory session store for audit trail lookups
 _sessions: dict = {}
 
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
+    """System health check — returns agent list and version."""
     return HealthResponse(
         status="ok",
         version="2.1.0",
@@ -58,6 +67,7 @@ async def health_check():
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_topic(request: AnalyzeRequest):
+    """Run the full 10-agent pipeline on a news topic."""
     from agents.orchestrator import run_pipeline
 
     session_id = str(uuid.uuid4())
@@ -81,12 +91,18 @@ async def analyze_topic(request: AnalyzeRequest):
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        # 🔥 NEW CLEAN MAPPING (PREMIUM ALIGNMENT)
+        # Map pipeline result to response schema
         briefing_data = result.get("briefing") or {}
         briefing = BriefingResponse(**briefing_data) if briefing_data else None
 
-        user_profile = UserProfileResponse(**result.get("user_profile", {})) if result.get("user_profile") else None
-        emotional_register = EmotionalRegisterResponse(**result.get("emotional_register", {})) if result.get("emotional_register") else None
+        user_profile = (
+            UserProfileResponse(**result.get("user_profile", {}))
+            if result.get("user_profile") else None
+        )
+        emotional_register = (
+            EmotionalRegisterResponse(**result.get("emotional_register", {}))
+            if result.get("emotional_register") else None
+        )
 
         return AnalyzeResponse(
             success=result.get("pipeline_status") == "completed",
@@ -96,8 +112,6 @@ async def analyze_topic(request: AnalyzeRequest):
             user_profile=user_profile,
             conflicts=result.get("conflicts", []),
             emotional_register=emotional_register,
-            knowledge_diff=result.get("knowledge_diff", []),
-            video_output=result.get("video_output"),
             story_arc=result.get("story_arc", []),
             audit_trail=result.get("audit_trail", []),
             error=result.get("error", ""),
@@ -111,11 +125,9 @@ async def analyze_topic(request: AnalyzeRequest):
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
 
 
-# --- REDUCED API SURFACE ---
-
-
 @app.get("/audio/{filename}")
 async def get_audio(filename: str):
+    """Serve a generated audio narration MP3."""
     safe_name = os.path.basename(filename)
     audio_path = os.path.join(AUDIO_OUTPUT_DIR, safe_name)
 
@@ -127,6 +139,7 @@ async def get_audio(filename: str):
 
 @app.get("/video/{filename}")
 async def get_video(filename: str):
+    """Serve a video file."""
     safe_name = os.path.basename(filename)
     video_path = os.path.join(VIDEO_OUTPUT_DIR, safe_name)
 
@@ -136,12 +149,9 @@ async def get_video(filename: str):
     return FileResponse(video_path, media_type="video/mp4", filename=safe_name)
 
 
-# Internal session mapping (kept for brief lookups if needed)
-# @app.get("/sessions") removed
-
-
 @app.get("/languages")
 async def get_supported_languages():
+    """Return all supported translation languages."""
     return {
         "languages": [
             {"code": code, "name": name}
@@ -152,6 +162,7 @@ async def get_supported_languages():
 
 @app.get("/personas")
 async def get_personas():
+    """Return available persona presets."""
     return {
         "personas": [
             {"name": name, "description": prompt}
@@ -161,7 +172,10 @@ async def get_personas():
     }
 
 
-# @app.get("/stress-test") removed
-
-
-# --- HISTORY REMOVED ---
+# Serve the React frontend build (if available)
+if FRONTEND_DIST.is_dir():
+    app.mount(
+        "/",
+        StaticFiles(directory=str(FRONTEND_DIST), html=True),
+        name="spa",
+    )

@@ -1,8 +1,9 @@
 """
-NewsGPT Navigator — Entity + Sentiment Agent
+NewsGPT Navigator — Entity Sentiment Agent
 
-NER + per-entity sentiment tagging.
-Transformation step 1 (required by rubric).
+Extracts named entities from verified articles via LLM,
+tags each with sentiment (positive/negative/neutral), and
+builds temporal story arcs from prior knowledge sessions.
 """
 
 import json
@@ -99,7 +100,7 @@ Respond in this exact JSON format:
                 "articles": article_ids,
             })
 
-        # ── Fallback for Hackathon (User Request) ──
+        # Fallback: ensure at least minimal entity data for downstream agents
         if not entity_sentiments:
             entity_sentiments = [
                 {
