@@ -47,11 +47,13 @@ export async function analyzeTopic(body: {
   const { job_id } = (await enqueue.json()) as { job_id: string }
 
   // Step 2: poll for result with simple backoff
-  const maxAttempts = 60 // up to ~60s
+  const maxAttempts = 120 // up to ~4 minutes with 2s polling
   let attempt = 0
 
   // Small initial delay so backend can start work
   await new Promise((res) => setTimeout(res, 500))
+
+  const nonTerminalStatuses = new Set(['queued', 'running', 'processing'])
 
   while (attempt < maxAttempts) {
     attempt += 1
@@ -64,14 +66,13 @@ export async function analyzeTopic(body: {
     const data = (await r.json()) as AnalyzeResponse
 
     if (data.pipeline_status === 'completed') return data
-    if (data.pipeline_status === 'failed') {
-      throw new Error(data.error || 'Analysis failed')
+    if (!nonTerminalStatuses.has(data.pipeline_status)) {
+      throw new Error(data.error || `Pipeline stopped at status: ${data.pipeline_status}`)
     }
 
-    // Still running — wait a bit longer each time, capped to 2s
-    const delay = Math.min(2000, 250 + attempt * 100)
-    await new Promise((res) => setTimeout(res, delay))
+    // Keep polling steady to reduce backend load spikes.
+    await new Promise((res) => setTimeout(res, 2000))
   }
 
-  throw new Error('Analysis is taking longer than expected. Please try again.')
+  throw new Error('Analysis is taking longer than expected on backend. Please retry in a minute.')
 }
