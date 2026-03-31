@@ -32,7 +32,7 @@ class Settings:
 
     # ── NewsAPI ──
     NEWS_API_BASE_URL: str = "https://newsapi.org/v2"
-    MAX_ARTICLES: int = 20
+    MAX_ARTICLES: int = int(os.getenv("MAX_ARTICLES", "10"))
 
     # ── Embeddings ──
     EMBEDDING_MODEL: str = "paraphrase-MiniLM-L3-v2"  # Lighter (~45MB) model for Render Free Tier

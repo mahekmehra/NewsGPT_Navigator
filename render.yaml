@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon # Render's most common region, fallback to Oregon
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn api.main:app -k uvicorn.workers.UvicornWorker --workers 1 --threads 2 --timeout 120
+    startCommand: gunicorn api.main:app -w 1 -k uvicorn.workers.UvicornWorker --threads 1 --timeout 180 --log-level debug
     envVars:
       - key: GROQ_API_KEY
         sync: false
@@ -19,5 +19,11 @@ services:
         value: "0.3"
       - key: MAX_RETRIES
         value: "3"
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: MALLOC_ARENA_MAX
+        value: "2"
+      - key: PYTHONUNBUFFERED
+        value: "1"
     healthCheckPath: /api/health
     autoDeploy: true

@@ -9,61 +9,45 @@ This is the recommended setup for this project:
 
 ## 1) Backend on Render
 
-### Option A: Use `render.yaml` (already configured)
+### Option A: Use `render.yaml` (Optimized for Free Tier)
 
-This repo now includes a backend-only `render.yaml` with:
+This repo includes a backend-only `render.yaml` optimized for **512MB RAM**:
 
 - `runtime: python`
 - `buildCommand: pip install -r requirements.txt`
-- `startCommand: gunicorn api.main:app -k uvicorn.workers.UvicornWorker --workers 1 --threads 2 --timeout 120`
+- `startCommand: gunicorn api.main:app -w 1 -k uvicorn.workers.UvicornWorker --threads 1 --timeout 180`
 - `healthCheckPath: /api/health`
-
-### Option B: Configure in Render dashboard manually
-
-Use the same commands and health path above.
 
 ### Required environment variables on Render
 
-Add all backend env vars used by `core/config.py`, including:
+Add these to your Render service:
 
-- `GROQ_API_KEY`
-- `NEWS_API_KEY`
-- any other keys from your local `.env`
-
-### Verify backend
-
-After deploy:
-
-- `https://<render-backend>.onrender.com/api/health` -> should return status `ok`
+- `GROQ_API_KEY`: Your Groq API key.
+- `NEWS_API_KEY`: Your NewsAPI key.
+- `WEB_CONCURRENCY`: `1` (Crucial for memory).
+- `MALLOC_ARENA_MAX`: `2` (Prevents memory fragmentation).
+- `PYTHONUNBUFFERED`: `1`
 
 ---
 
 ## 2) Frontend on Vercel
 
-Create a separate Vercel project from this same repository.
+Create a project on Vercel named **News_GPT**.
 
 - Root Directory: `web`
 - Framework Preset: `Vite`
 - Build Command: `npm run build`
 - Output Directory: `dist`
 
-Set frontend environment variable:
+Set environment variable:
 
 - `VITE_API_BASE_URL=https://<render-backend>.onrender.com`
 
-(`web/.env.example` already documents this variable.)
-
-### Verify frontend
-
-After deploy:
-
-- Open `https://<vercel-frontend>.vercel.app`
-- Click Analyze
-- Requests should go to `https://<render-backend>.onrender.com/api/...`
-
 ---
 
-## 3) Notes
+## 3) Deployment Notes
 
-- CORS is currently permissive in backend (`allow_origins=["*"]`), so cross-domain calls will work.
-- For production hardening later, restrict CORS to your Vercel frontend domain.
+- **Initial Load**: The first analysis may take longer as the embedding model (~45MB) is downloaded.
+- **Memory**: The system is capped at 1 active job to prevent Render from killing the process due to RAM limits.
+- **CORS**: Currently set to `allow_origins=["*"]`. Restricted for production in `api/main.py` if needed.
+- **Cleanup**: The `tests/` directory and `venv/` have been removed to reduce package size.

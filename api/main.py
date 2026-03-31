@@ -8,6 +8,7 @@ Orchestrates the full 10-agent LangGraph pipeline.
 
 import asyncio
 import os
+import time
 import uuid
 from collections import OrderedDict
 from datetime import datetime, timezone
@@ -56,6 +57,7 @@ _sessions: Dict[str, Dict[str, Any]] = {}
 _ANALYZE_CACHE: "OrderedDict[Tuple[str, str, str], Dict[str, Any]]" = OrderedDict()
 _MAX_CACHE_ITEMS = 16
 _JOBS: Dict[str, Dict[str, Any]] = {}
+_MAX_JOB_SECONDS = 300
 
 
 def _cache_get(key: Tuple[str, str, str]) -> Dict[str, Any] | None:
@@ -115,6 +117,7 @@ async def _run_pipeline_background(
     key = (topic, persona, language)
 
     try:
+        _JOBS[job_id]["status"] = "running"
         cached = _cache_get(key)
         if cached is not None:
             result = cached
@@ -140,12 +143,14 @@ async def _run_pipeline_background(
             "status": "completed",
             "result": result,
             "error": None,
+            "updated_at": time.time(),
         }
     except Exception as exc:
         _JOBS[job_id] = {
             "status": "failed",
             "result": None,
             "error": str(exc),
+            "updated_at": time.time(),
         }
 
 
@@ -197,10 +202,20 @@ async def analyze_topic(request: AnalyzeRequest):
     language = request.language if request.language in valid_languages else "en"
 
     job_id = str(uuid.uuid4())
+    # Keep only one active heavy job to reduce memory pressure on Render free tier.
+    active_jobs = [j for j in _JOBS.values() if j.get("status") in {"queued", "running"}]
+    if active_jobs:
+        raise HTTPException(
+            status_code=429,
+            detail="Server is processing another analysis. Please retry in a minute.",
+        )
+
     _JOBS[job_id] = {
         "status": "queued",
         "result": None,
         "error": None,
+        "created_at": time.time(),
+        "updated_at": time.time(),
     }
 
     asyncio.create_task(
@@ -226,6 +241,16 @@ async def get_analyze_result(job_id: str):
     job = _JOBS.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
+
+    created_at = float(job.get("created_at", time.time()))
+    age = time.time() - created_at
+    if job["status"] in {"queued", "running"} and age > _MAX_JOB_SECONDS:
+        job["status"] = "failed"
+        job["error"] = (
+            "Analysis timed out on server (possible worker restart or memory limit). "
+            "Please retry with a shorter topic."
+        )
+        job["updated_at"] = time.time()
 
     if job["status"] != "completed":
         return AnalyzeResponse(
