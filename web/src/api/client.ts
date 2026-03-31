@@ -1,6 +1,6 @@
 import type { AnalyzeResponse } from '@/types/api'
 
-const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+export const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
 const API_BASE = `${API_ORIGIN}/api`
 
 export async function fetchHealth(): Promise<{ status: string; agents: string[] }> {

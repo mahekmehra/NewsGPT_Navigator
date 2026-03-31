@@ -15,11 +15,24 @@ def _score_article(article: dict, topic: str) -> float:
     Score an article for quality.
     Score = relevance_match * 0.4 + recency * 0.3 + length_score * 0.3
     """
-    # Relevance: keyword overlap
-    keywords = topic.lower().split()
-    text = f"{article.get('title', '')} {article.get('description', '')}".lower()
-    matches = sum(1 for kw in keywords if kw in text)
-    relevance = min(matches / max(len(keywords), 1), 1.0)
+    # Relevance: keyword overlap (Weighted towards Title)
+    keywords = set(topic.lower().split())
+    title = article.get('title', '').lower()
+    desc = article.get('description', '').lower()
+    
+    title_matches = sum(1 for kw in keywords if kw in title)
+    desc_matches = sum(1 for kw in keywords if kw in desc)
+    
+    # Require at least ONE keyword in the title for a decent score
+    title_relevance = title_matches / len(keywords) if keywords else 0
+    desc_relevance = desc_matches / len(keywords) if keywords else 0
+    
+    # Combined relevance (Title is more important)
+    relevance = (title_relevance * 0.7) + (desc_relevance * 0.3)
+    
+    # Minimum threshold: If it doesn't match at least 50% of the words, penalize it heavily
+    if relevance < 0.4:
+        relevance *= 0.1
 
     # Recency: prefer articles from last 3 days
     recency = 0.5  # default

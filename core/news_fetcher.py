@@ -36,7 +36,7 @@ def fetch_from_newsapi(
         response = requests.get(
             f"{settings.NEWS_API_BASE_URL}/everything",
             params={
-                "q": topic,
+                "q": " AND ".join(topic.split()),
                 "from": from_date,
                 "sortBy": "relevancy",
                 "pageSize": max_articles,

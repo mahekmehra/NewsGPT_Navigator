@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Pause, Play } from 'lucide-react'
+import { API_ORIGIN } from '@/api/client'
 
 function resolveAudioSrc(url: string): string {
   const u = url.trim()
   if (!u) return ''
   if (u.startsWith('http://') || u.startsWith('https://')) return u
-  return u.startsWith('/') ? u : `/${u}`
+  const p = u.startsWith('/') ? u : `/${u}`
+  return `${API_ORIGIN}${p}`
 }
 
 function formatTime(sec: number): string {

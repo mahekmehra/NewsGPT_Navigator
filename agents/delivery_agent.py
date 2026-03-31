@@ -123,7 +123,7 @@ def _generate_audio(script_text: str, topic: str, lang: str = "en") -> str:
         tts.save(file_path)
 
         # Return the URL path that the backend serves
-        return f"/audio/{filename}"
+        return f"/api/audio/{filename}"
     except Exception as e:
         print(f"[DeliveryAgent] Audio Error: {e}")
         return ""
@@ -162,12 +162,16 @@ async def delivery_agent(state: PipelineState) -> dict:
 
         # 3. Comprehensive Multilingual Support (Parallelized)
         translated_summary = summary
+        translated_timeline = analysis.get("timeline", [])
+        translated_prediction = prediction
+
         if language != "en":
             # List of translation tasks
             tasks = []
             
-            # Summary task
+            # Summary & Prediction tasks
             tasks.append(translate_text_async(summary, language))
+            tasks.append(translate_text_async(prediction, language))
             
             # Persona brief tasks
             tasks.append(translate_text_async(persona_brief.get("headline", ""), language))
@@ -195,8 +199,10 @@ async def delivery_agent(state: PipelineState) -> dict:
             for ak in angle_keys:
                 tasks.append(translate_text_async(angles.get(ak, ""), language))
             
-            # Prediction
-            tasks.append(translate_text_async(prediction, language))
+            # Timeline tasks - (Translate each event's text)
+            raw_timeline = analysis.get("timeline", [])
+            for event in raw_timeline:
+                tasks.append(translate_text_async(event.get("event", ""), language))
 
             # Execute all translations in parallel
             results = await asyncio.gather(*tasks)
@@ -204,6 +210,7 @@ async def delivery_agent(state: PipelineState) -> dict:
             # Assign results back (Order is preserved in asyncio.gather)
             res_idx = 0
             translated_summary = results[res_idx]; res_idx += 1
+            translated_prediction = results[res_idx]; res_idx += 1
             
             persona_brief["headline"] = results[res_idx]; res_idx += 1
             persona_brief["summary"] = results[res_idx]; res_idx += 1
@@ -224,8 +231,15 @@ async def delivery_agent(state: PipelineState) -> dict:
             
             for ak in angle_keys:
                 angles[ak] = results[res_idx]; res_idx += 1
-                
-            prediction = results[res_idx]; res_idx += 1
+            
+            # Reconstruct translated timeline
+            translated_timeline = []
+            for event in raw_timeline:
+                translated_timeline.append({
+                    "date": event.get("date", ""),
+                    "event": results[res_idx]
+                })
+                res_idx += 1
 
         # 4. Final Data Mapping (including Article connectivity)
         sources = [
@@ -263,7 +277,7 @@ async def delivery_agent(state: PipelineState) -> dict:
             insight_label = f"{persona} के लिए जानकारी:"
             takeaway_label = "रणनीतिक निष्कर्ष:"
             prediction_label = "भविष्यवाणी:"
-            outro = "ब्रीफिंग समाप्त。"
+            outro = "ब्रीफिंग समाप्त।"
 
         audio_script = f"""
         {intro}
@@ -282,8 +296,8 @@ async def delivery_agent(state: PipelineState) -> dict:
         """
         audio_url = await asyncio.to_thread(_generate_audio, audio_script, topic, lang=language)
 
-        if not summary:
-            summary = f"Intelligence synthesis for {topic} is currently matching multiple narrative clusters across verified sources."
+        if not translated_summary:
+            translated_summary = f"Intelligence synthesis for {topic} is currently matching multiple narrative clusters across verified sources."
 
         # Enforce all 4 angle keys
         for key in ["market_impact", "expert_opinion", "risks", "opportunities"]:
@@ -292,20 +306,20 @@ async def delivery_agent(state: PipelineState) -> dict:
 
         briefing = {
             "title": f"Intelligence Briefing: {topic}",
-            "summary": summary,
+            "summary": translated_summary, # Main summary is now translated
             "persona": persona,
             "language": language,
 
             "persona_brief": persona_brief,
             "angles": angles,
             "follow_up_questions": followups,
-            "timeline": analysis.get("timeline", []),
-            "prediction": prediction,
+            "timeline": translated_timeline, # Timeline is now translated
+            "prediction": translated_prediction, # Prediction is now translated
 
             "key_entities": analysis.get("key_entities", [])[:10],
-            "entities_metadata": analysis.get("entities_metadata", []), # Critical for UI links
+            "entities_metadata": analysis.get("entities_metadata", []), 
             "sentiment": analysis.get("sentiment", "neutral"),
-            "sources": sources[:5],  # Limit to top 5
+            "sources": sources[:5],
             "translated_summary": translated_summary,
             "bias_score": bias_score,
             "compliance_status": "Passed" if state.get("compliance_passed") else "Caution",
