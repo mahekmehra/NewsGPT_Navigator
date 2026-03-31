@@ -129,8 +129,9 @@ def _generate_audio(script_text: str, topic: str, lang: str = "en") -> str:
         return ""
 
 
-def delivery_agent(state: PipelineState) -> dict:
-    from core.translator import translate_text
+async def delivery_agent(state: PipelineState) -> dict:
+    from core.translator import translate_text, translate_text_async
+    import asyncio
 
     analysis = state.get("analysis", {})
     persona = state.get("persona", settings.DEFAULT_PERSONA)
@@ -159,31 +160,72 @@ def delivery_agent(state: PipelineState) -> dict:
         prediction = analysis.get("prediction", "")
         summary = analysis.get("summary", "")
 
-        # 3. Comprehensive Multilingual Support
-        translated_summary = ""
+        # 3. Comprehensive Multilingual Support (Parallelized)
+        translated_summary = summary
         if language != "en":
-            # Translate main summary
-            translated_summary = translate_text(summary, language)
+            # List of translation tasks
+            tasks = []
             
-            # Translate persona brief keys
-            persona_brief["headline"] = translate_text(persona_brief.get("headline", ""), language)
-            persona_brief["summary"] = translate_text(persona_brief.get("summary", ""), language)
-            persona_brief["final_assessment"] = translate_text(persona_brief.get("final_assessment", ""), language)
-            if persona_brief.get("key_points"):
-                persona_brief["key_points"] = [translate_text(kp, language) for kp in persona_brief["key_points"]]
-            if persona_brief.get("risks"):
-                persona_brief["risks"] = [translate_text(r, language) for r in persona_brief["risks"]]
-            if persona_brief.get("next_steps"):
-                persona_brief["next_steps"] = [translate_text(ns, language) for ns in persona_brief["next_steps"]]
-            if persona_brief.get("insights"):
-                persona_brief["insights"] = [translate_text(ins, language) for ins in persona_brief["insights"]]
+            # Summary task
+            tasks.append(translate_text_async(summary, language))
             
-            # Translate angles
-            for key in angles:
-                angles[key] = translate_text(angles[key], language)
+            # Persona brief tasks
+            tasks.append(translate_text_async(persona_brief.get("headline", ""), language))
+            tasks.append(translate_text_async(persona_brief.get("summary", ""), language))
+            tasks.append(translate_text_async(persona_brief.get("final_assessment", ""), language))
             
-            # Translate prediction
-            prediction = translate_text(prediction, language)
+            p_key_points = persona_brief.get("key_points", [])
+            for kp in p_key_points:
+                tasks.append(translate_text_async(kp, language))
+            
+            p_risks = persona_brief.get("risks", [])
+            for r in p_risks:
+                tasks.append(translate_text_async(r, language))
+                
+            p_next_steps = persona_brief.get("next_steps", [])
+            for ns in p_next_steps:
+                tasks.append(translate_text_async(ns, language))
+            
+            p_insights = persona_brief.get("insights", [])
+            for ins in p_insights:
+                tasks.append(translate_text_async(ins, language))
+
+            # Angles
+            angle_keys = ["market_impact", "expert_opinion", "risks", "opportunities"]
+            for ak in angle_keys:
+                tasks.append(translate_text_async(angles.get(ak, ""), language))
+            
+            # Prediction
+            tasks.append(translate_text_async(prediction, language))
+
+            # Execute all translations in parallel
+            results = await asyncio.gather(*tasks)
+            
+            # Assign results back (Order is preserved in asyncio.gather)
+            res_idx = 0
+            translated_summary = results[res_idx]; res_idx += 1
+            
+            persona_brief["headline"] = results[res_idx]; res_idx += 1
+            persona_brief["summary"] = results[res_idx]; res_idx += 1
+            persona_brief["final_assessment"] = results[res_idx]; res_idx += 1
+            
+            if p_key_points:
+                persona_brief["key_points"] = results[res_idx:res_idx+len(p_key_points)]
+                res_idx += len(p_key_points)
+            if p_risks:
+                persona_brief["risks"] = results[res_idx:res_idx+len(p_risks)]
+                res_idx += len(p_risks)
+            if p_next_steps:
+                persona_brief["next_steps"] = results[res_idx:res_idx+len(p_next_steps)]
+                res_idx += len(p_next_steps)
+            if p_insights:
+                persona_brief["insights"] = results[res_idx:res_idx+len(p_insights)]
+                res_idx += len(p_insights)
+            
+            for ak in angle_keys:
+                angles[ak] = results[res_idx]; res_idx += 1
+                
+            prediction = results[res_idx]; res_idx += 1
 
         # 4. Final Data Mapping (including Article connectivity)
         sources = [
@@ -196,10 +238,8 @@ def delivery_agent(state: PipelineState) -> dict:
         ]
 
         # Audio narration script
-        # Covers: intro, summary, entities, persona insight, assessment, prediction, outro
         entities_text = ", ".join(analysis.get('key_entities', [])[:5])
         
-        # Determine intro/outro language (simple mapping)
         intro = f"Intelligence Briefing regarding {topic}."
         summary_label = "General Summary:"
         entities_label = "Key entities involved include:"
@@ -208,7 +248,6 @@ def delivery_agent(state: PipelineState) -> dict:
         prediction_label = "Prediction and Future Outlook:"
         outro = "End of briefing."
         
-        # Optional: Translate labels for major languages if language != 'en'
         if language == "pa":
             intro = f"{topic} ਦੇ ਸਬੰਧ ਵਿੱਚ ਖੁਫੀਆ ਜਾਣਕਾਰੀ।"
             summary_label = "ਆਮ ਸੰਖੇਪ:"
@@ -224,7 +263,7 @@ def delivery_agent(state: PipelineState) -> dict:
             insight_label = f"{persona} के लिए जानकारी:"
             takeaway_label = "रणनीतिक निष्कर्ष:"
             prediction_label = "भविष्यवाणी:"
-            outro = "ब्रीफिंग समाप्त।"
+            outro = "ब्रीफिंग समाप्त。"
 
         audio_script = f"""
         {intro}
@@ -241,7 +280,7 @@ def delivery_agent(state: PipelineState) -> dict:
         
         {outro}
         """
-        audio_url = _generate_audio(audio_script, topic, lang=language)
+        audio_url = await asyncio.to_thread(_generate_audio, audio_script, topic, lang=language)
 
         if not summary:
             summary = f"Intelligence synthesis for {topic} is currently matching multiple narrative clusters across verified sources."

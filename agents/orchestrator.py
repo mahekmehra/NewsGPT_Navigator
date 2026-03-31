@@ -165,7 +165,7 @@ def build_pipeline() -> StateGraph:
 pipeline = build_pipeline().compile()
 
 
-def run_pipeline(
+async def run_pipeline(
     topic: str,
     persona: str = "General",
     language: str = "en",
@@ -173,17 +173,8 @@ def run_pipeline(
     custom_persona: str = "",
 ) -> dict:
     """
-    Execute the full 10-agent pipeline for a given topic.
-
-    Args:
-        topic: News topic to analyze
-        persona: Persona preset name
-        language: Target language code
-        knowledge_session_id: Session ID for story arc persistence
-        custom_persona: Free-text persona description
-
-    Returns:
-        Complete pipeline state as a dict
+    Execute the full 10-agent LangGraph pipeline for a given topic.
+    Now using ainvoke to support parallel delivery agent tasks.
     """
     initial_state = create_initial_state(
         topic=topic,
@@ -193,5 +184,5 @@ def run_pipeline(
         custom_persona=custom_persona,
     )
 
-    result = pipeline.invoke(initial_state)
+    result = await pipeline.ainvoke(initial_state)
     return dict(result)

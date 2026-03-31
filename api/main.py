@@ -27,6 +27,10 @@ VIDEO_OUTPUT_DIR = os.path.join(
 os.makedirs(VIDEO_OUTPUT_DIR, exist_ok=True)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
+JOBS_FILE = Path(__file__).resolve().parent.parent / "data" / "jobs.json"
+os.makedirs(JOBS_FILE.parent, exist_ok=True)
+
+import json
 
 from api.schemas import (
     AnalyzeRequest,
@@ -74,6 +78,34 @@ def _cache_set(key: Tuple[str, str, str], value: Dict[str, Any]) -> None:
         _ANALYZE_CACHE.popitem(last=False)
 
 
+def _save_jobs():
+    """Persist jobs to disk to survive Render restarts."""
+    try:
+        # Only save metadata and results, exclude potentially non-serializable objects
+        with open(JOBS_FILE, "w") as f:
+            json.dump(_JOBS, f)
+    except Exception as e:
+        print(f"[API] Error saving jobs: {e}")
+
+
+def _load_jobs():
+    """Load jobs from disk on startup."""
+    global _JOBS
+    if JOBS_FILE.exists():
+        try:
+            with open(JOBS_FILE, "r") as f:
+                _JOBS = json.load(f)
+            print(f"[API] Loaded {len(_JOBS)} jobs from persistence.")
+        except Exception as e:
+            print(f"[API] Error loading jobs: {e}")
+            _JOBS = {}
+
+
+@app.on_event("startup")
+async def startup_event():
+    _load_jobs()
+
+
 api = APIRouter(prefix="/api")
 
 
@@ -108,9 +140,8 @@ async def _run_pipeline_background(
     custom_persona: str,
 ):
     """
-    Execute the heavy LangGraph pipeline in a worker thread.
-    This keeps the main event loop responsive and avoids Render
-    health-check timeouts.
+    Execute the heavy LangGraph pipeline.
+    Now fully async to support parallel delivery tasks.
     """
     from agents.orchestrator import run_pipeline
 
@@ -118,12 +149,14 @@ async def _run_pipeline_background(
 
     try:
         _JOBS[job_id]["status"] = "running"
+        _save_jobs()
+        
         cached = _cache_get(key)
         if cached is not None:
             result = cached
         else:
-            result = await asyncio.to_thread(
-                run_pipeline,
+            # run_pipeline is now async
+            result = await run_pipeline(
                 topic=topic,
                 persona=persona,
                 language=language,
@@ -139,19 +172,24 @@ async def _run_pipeline_background(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        _JOBS[job_id] = {
+        _JOBS[job_id].update({
             "status": "completed",
             "result": result,
             "error": None,
             "updated_at": time.time(),
-        }
+        })
+        _save_jobs()
+
     except Exception as exc:
-        _JOBS[job_id] = {
+        import traceback
+        traceback.print_exc()
+        _JOBS[job_id].update({
             "status": "failed",
             "result": None,
             "error": str(exc),
             "updated_at": time.time(),
-        }
+        })
+        _save_jobs()
 
 
 def _map_pipeline_to_response(result: Dict[str, Any]) -> AnalyzeResponse:
@@ -217,6 +255,7 @@ async def analyze_topic(request: AnalyzeRequest):
         "created_at": time.time(),
         "updated_at": time.time(),
     }
+    _save_jobs()
 
     asyncio.create_task(
         _run_pipeline_background(

@@ -59,6 +59,15 @@ def translate_text(text: str, target_language: str) -> str:
         return text
 
 
+import asyncio
+
+async def translate_text_async(text: str, target_language: str) -> str:
+    """
+    Asynchronous version of translate_text that uses a thread pool for blocking calls.
+    """
+    return await asyncio.to_thread(translate_text, text, target_language)
+
+
 def get_supported_languages() -> dict:
     """Return dict of supported language codes and names."""
     return settings.SUPPORTED_LANGUAGES.copy()
