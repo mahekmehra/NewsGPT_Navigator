@@ -30,9 +30,9 @@ def _score_article(article: dict, topic: str) -> float:
     # Combined relevance (Title is more important)
     relevance = (title_relevance * 0.7) + (desc_relevance * 0.3)
     
-    # Minimum threshold: If it doesn't match at least 50% of the words, penalize it heavily
-    if relevance < 0.4:
-        relevance *= 0.1
+    # HARD FILTER: If it doesn't match enough (less than 35%), it's junk
+    if relevance < 0.35:
+        return 0.0
 
     # Recency: prefer articles from last 3 days
     recency = 0.5  # default
@@ -56,6 +56,11 @@ def _score_article(article: dict, topic: str) -> float:
     # Length: prefer articles with substantial content
     content = article.get("content", "") or article.get("description", "")
     content_len = len(content)
+    
+    # HARD FILTER: Don't accept snippets that are too short (under 100 chars)
+    if content_len < 100:
+        return 0.0
+
     if content_len > 500:
         length_score = 1.0
     elif content_len > 200:

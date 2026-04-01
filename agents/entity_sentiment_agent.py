@@ -52,17 +52,17 @@ def entity_sentiment_agent(state: PipelineState) -> dict:
             content = art.get("content", "") or art.get("description", "")
             articles_text += f"\n--- Article {i+1}: {title} ---\n{content}\n"
 
-        # LLM-based NER + sentiment tagging
-        ner_prompt = f"""Analyze these news articles about "{topic}" and extract ALL named entities.
-For each entity, determine:
-1. Entity name
-2. Entity type (PERSON, ORG, GPE, PRODUCT, EVENT, POLICY, METRIC)
-3. Sentiment (positive, negative, neutral) based on how the entity is portrayed
-4. Confidence score (0.0 to 1.0)
-5. Which article numbers mention this entity (1-indexed)
+        # LLM-based NER + sentiment tagging (Focusing context on the topic)
+        ner_prompt = f"""You are a specialized News Intelligence Analyst.
+Analyze these news articles about "{topic}" and extract ONLY high-value named entities that are directly relevant to this topic.
+
+STRICT FILTERING RULES:
+1. FOCUS: Only extract entities that play a role in the "{topic}" story.
+2. IGNORE: Do not extract generic entities (e.g. "Today", "Morning", "Social Media") or unrelated persons/orgs mentioned in side-stories.
+3. ENTITY TYPES: Use (PERSON, ORG, GPE, PRODUCT, EVENT, POLICY, METRIC).
 
 ARTICLES:
-{articles_text[:4000]}
+{articles_text[:12000]}
 
 Respond in this exact JSON format:
 {{

@@ -95,19 +95,32 @@ Respond in STRICT JSON:
 
         data = safe_json_parse(response, {})
 
-        # ── Timeline (with Source Mapping) ──
-        timeline_prompt = f"""
-        Extract key timeline events from:
-        {context}
+        # ── Timeline (Using Comprehensive Article Set) ──
+        full_article_content = "\n\n".join([
+            f"DATE: {a.get('published_at', '')} | TITLE: {a.get('title', '')}\nCONTENT: {a.get('description', '')}" 
+            for a in verified_articles
+        ])
 
-        For each event, specify which article it comes from (provide a short title or index).
+        timeline_prompt = f"""
+        Extract key timeline events from these articles about "{topic}".
+        
+        RULES:
+        1. ONLY extract events that are significant developments specifically for "{topic}". 
+        2. IGNORE unrelated news mentioned in side-articles.
+        3. DATE FORMAT: Use human-readable dates (e.g., Nov 12, 2023).
+        4. BE CONCISE: Max 10-15 words per event.
+
+        ARTICLES:
+        {full_article_content[:15000]}
+
+        For each event, specify which article it comes from (provide a short title or index) as "source_hint".
         Return JSON:
         {{"timeline":[{{"date":"...","event":"...", "source_hint":"..."}}]}}
         """
 
         timeline_resp = call_llm(
             prompt=timeline_prompt,
-            system_prompt="Return valid JSON. Be accurate with dates.",
+            system_prompt="Return valid JSON. Be accurate with dates and strictly topic-focused.",
             complexity="simple",
         )
 
