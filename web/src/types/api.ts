@@ -109,3 +109,10 @@ export interface PersonaInfo {
   name: string
   description: string
 }
+
+export interface CompareResponse {
+  success: boolean
+  left: AnalyzeResponse | null
+  right: AnalyzeResponse | null
+  error: string
+}

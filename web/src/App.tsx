@@ -10,7 +10,7 @@ import { PersonaCompareView } from '@/views/PersonaCompareView'
 import { ConflictsView } from '@/views/ConflictsView'
 import { TimelineView } from '@/views/TimelineView'
 import { VideosView } from '@/views/VideosView'
-import { analyzeTopic, fetchHealth, fetchLanguages, fetchPersonas } from '@/api/client'
+import { analyzeTopic, compareTopic, fetchHealth, fetchLanguages, fetchPersonas } from '@/api/client'
 import type { AnalyzeResponse } from '@/types/api'
 import type { SectionId } from '@/types/navigation'
 
@@ -113,18 +113,19 @@ export default function App() {
     setCompareLeft(null)
     setCompareRight(null)
     try {
-      const left = await analyzeTopic({
+      const data = await compareTopic({
         topic: topic.trim(),
-        persona: personaA,
+        persona_a: personaA,
+        persona_b: personaB,
         language,
       })
-      setCompareLeft(left)
-      const right = await analyzeTopic({
-        topic: topic.trim(),
-        persona: personaB,
-        language,
-      })
-      setCompareRight(right)
+      
+      if (data.success) {
+        setCompareLeft(data.left)
+        setCompareRight(data.right)
+      } else {
+        setCompareError(data.error)
+      }
     } catch (e) {
       setCompareError(e instanceof Error ? e.message : 'Compare failed')
     } finally {

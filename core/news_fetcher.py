@@ -13,8 +13,14 @@ from typing import Optional
 from core.config import settings
 
 
+import threading
+
 _DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 _SAMPLE_FILE = os.path.join(_DATA_DIR, "sample_articles.json")
+
+# In-memory cache for fetched articles
+_fetch_cache = {}
+_fetch_lock = threading.Lock()
 
 
 def fetch_from_newsapi(
@@ -105,15 +111,26 @@ def load_sample_articles(topic: str = "") -> list:
 def fetch_articles(topic: str, max_articles: int = 20) -> list:
     """
     Primary fetch function. Tries NewsAPI first, falls back to samples.
+    Includes thread-safe caching.
     """
+    global _fetch_cache
+    
+    with _fetch_lock:
+        if topic in _fetch_cache:
+            print(f"[NewsFetcher] Returning cached results for: {topic}")
+            return _fetch_cache[topic]
+
     # Try live API first
     articles = fetch_from_newsapi(topic, max_articles)
 
-    if articles:
+    if not articles:
+        # Fallback to sample data
+        print("[NewsFetcher] Falling back to sample articles")
+        articles = load_sample_articles(topic)
+    else:
         print(f"[NewsFetcher] Fetched {len(articles)} articles from NewsAPI")
-        return articles
 
-    # Fallback to sample data
-    print("[NewsFetcher] Falling back to sample articles")
-    samples = load_sample_articles(topic)
-    return samples
+    with _fetch_lock:
+        _fetch_cache[topic] = articles
+        
+    return articles

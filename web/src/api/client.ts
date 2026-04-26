@@ -1,4 +1,4 @@
-import type { AnalyzeResponse } from '@/types/api'
+import type { AnalyzeResponse, CompareResponse } from '@/types/api'
 
 export async function fetchHealth(): Promise<{ status: string; agents: string[] }> {
   const r = await fetch('/health')
@@ -31,6 +31,25 @@ export async function analyzeTopic(body: {
   custom_persona?: string
 }): Promise<AnalyzeResponse> {
   const r = await fetch('/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? r.statusText)
+  }
+  return r.json()
+}
+
+export async function compareTopic(body: {
+  topic: string
+  persona_a: string
+  persona_b: string
+  language: string
+  knowledge_session_id?: string
+}): Promise<CompareResponse> {
+  const r = await fetch('/compare', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

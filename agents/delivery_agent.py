@@ -35,8 +35,7 @@ def _generate_followups(topic: str) -> list:
         f"How will this impact the economy in the long term?",
     ]
 
-
-def _format_for_persona_llm(analysis: dict, persona: str, conflicts: list, source_quality: str) -> dict:
+def _format_for_persona_llm(analysis: dict, persona: str, conflicts: list, source_quality: str, language: str = "en") -> dict:
     """Use LLM to generate a truly custom persona brief with conflict resolution."""
     from core.llm_router import call_llm
     import json
@@ -54,6 +53,10 @@ def _format_for_persona_llm(analysis: dict, persona: str, conflicts: list, sourc
     prompt = f"""
     You are an advanced AI news intelligence system producing a reliable, structured, and decision-useful briefing.
     
+    TARGET LANGUAGE: {language}
+    You MUST respond in {language}. Use the NATIVE script for {language} (e.g. Gurmukhi for Punjabi, Devanagari for Hindi, Arabic script for Urdu, Hanzi for Chinese, etc.). 
+    DO NOT use Romanized transliteration. All text fields in the JSON must be in the native script of {language}.
+
     PERSONA GUIDANCE: {persona_prompt}
     
     RAW DATA:
@@ -71,8 +74,8 @@ def _format_for_persona_llm(analysis: dict, persona: str, conflicts: list, sourc
     
     Respond STRICTLY in JSON with these exact keys. Do NOT hallucinate data if absent:
     {{
-        "headline": "Persona-specific title (e.g. Market ROI Analysis vs Beginners Guide)",
-        "summary": "Persona-tailored synthesis. Use persona-appropriate depth and vocabulary.",
+        "headline": "Persona-specific title",
+        "summary": "Persona-tailored synthesis in {language} (native script).",
         "key_points": ["Point 1", "Point 2"],
         "final_assessment": "Most likely truth based on evidence is...",
         "confidence_score": "e.g. 85% or High",
@@ -85,7 +88,7 @@ def _format_for_persona_llm(analysis: dict, persona: str, conflicts: list, sourc
     
     response = call_llm(
         prompt=prompt,
-        system_prompt=f"You are a specialized intelligence curator for a {persona}. Provide strictly structured JSON output.",
+        system_prompt=f"You are a specialized intelligence curator for a {persona}. Respond strictly in {language} JSON using its native script.",
         complexity="power"
     )
     
@@ -143,15 +146,15 @@ def delivery_agent(state: PipelineState) -> dict:
         "timestamp": timestamp,
         "agent": "delivery",
         "action": "interactive_briefing_generation",
-        "inputs": {"persona": persona},
+        "inputs": {"persona": persona, "language": language},
         "outputs": {},
     }
 
     try:
-        # 1. Generate Persona-Specific Brief (LLM Powered)
+        # 1. Generate Persona-Specific Brief (LLM Powered with Language Support)
         conflicts = state.get("conflicts", [])
         source_quality = state.get("source_quality_summary", "Standard source validation applied.")
-        persona_brief = _format_for_persona_llm(analysis, persona, conflicts, source_quality)
+        persona_brief = _format_for_persona_llm(analysis, persona, conflicts, source_quality, language=language)
         
         # 2. Structure Angles and Follow-ups
         angles = _generate_angles(analysis)
@@ -159,33 +162,14 @@ def delivery_agent(state: PipelineState) -> dict:
         prediction = analysis.get("prediction", "")
         summary = analysis.get("summary", "")
 
-        # 3. Comprehensive Multilingual Support
-        translated_summary = ""
+        # 3. Multilingual Support (Fallback for non-LLM fields)
         if language != "en":
-            # Translate main summary
-            translated_summary = translate_text(summary, language)
+            # Translate follow-ups
+            followups = [translate_text(f, language) for f in followups]
             
-            # Translate persona brief keys
-            persona_brief["headline"] = translate_text(persona_brief.get("headline", ""), language)
-            persona_brief["summary"] = translate_text(persona_brief.get("summary", ""), language)
-            persona_brief["final_assessment"] = translate_text(persona_brief.get("final_assessment", ""), language)
-            if persona_brief.get("key_points"):
-                persona_brief["key_points"] = [translate_text(kp, language) for kp in persona_brief["key_points"]]
-            if persona_brief.get("risks"):
-                persona_brief["risks"] = [translate_text(r, language) for r in persona_brief["risks"]]
-            if persona_brief.get("next_steps"):
-                persona_brief["next_steps"] = [translate_text(ns, language) for ns in persona_brief["next_steps"]]
-            if persona_brief.get("insights"):
-                persona_brief["insights"] = [translate_text(ins, language) for ins in persona_brief["insights"]]
-            
-            # Translate angles
-            for key in angles:
-                angles[key] = translate_text(angles[key], language)
-            
-            # Translate prediction
-            prediction = translate_text(prediction, language)
+            # Note: summary, prediction, and persona_brief are already generated in the target language by analysis_agent and _format_for_persona_llm
 
-        # 4. Final Data Mapping (including Article connectivity)
+        # 4. Final Data Mapping
         sources = [
             {
                 "title": s.get("title", ""),
@@ -196,60 +180,57 @@ def delivery_agent(state: PipelineState) -> dict:
         ]
 
         # Audio narration script
-        # Covers: intro, summary, entities, persona insight, assessment, prediction, outro
         entities_text = ", ".join(analysis.get('key_entities', [])[:5])
         
-        # Determine intro/outro language (simple mapping)
-        intro = f"Intelligence Briefing regarding {topic}."
-        summary_label = "General Summary:"
-        entities_label = "Key entities involved include:"
-        insight_label = f"Insight for {persona}:"
-        takeaway_label = "Strategic Takeaway:"
-        prediction_label = "Prediction and Future Outlook:"
-        outro = "End of briefing."
+        # Determine labels based on language
+        labels = {
+            "en": {
+                "intro": f"Intelligence Briefing regarding {topic}.",
+                "summary": "General Summary:",
+                "entities": "Key entities involved include:",
+                "insight": f"Insight for {persona}:",
+                "takeaway": "Strategic Takeaway:",
+                "prediction": "Prediction and Future Outlook:",
+                "outro": "End of briefing."
+            },
+            "hi": {
+                "intro": f"{topic} के संबंध में खुफिया जानकारी।",
+                "summary": "सामान्य सारांश:",
+                "entities": "शामिल प्रमुख इकाइयां:",
+                "insight": f"{persona} के लिए जानकारी:",
+                "takeaway": "रणनीतिक निष्कर्ष:",
+                "prediction": "भविष्यवाणी:",
+                "outro": "ब्रीफिंग समाप्त।"
+            },
+            "pa": {
+                "intro": f"{topic} ਦੇ ਸਬੰਧ ਵਿੱਚ ਖੁਫੀਆ ਜਾਣਕਾਰੀ।",
+                "summary": "ਆਮ ਸੰਖੇਪ:",
+                "entities": "ਸ਼ਾਮਲ ਮੁੱਖ ਇਕਾਈਆਂ:",
+                "insight": f"{persona} ਲਈ ਜਾਣਕਾਰੀ:",
+                "takeaway": "ਰਣਨੀਤਕ ਸਿੱਟਾ:",
+                "prediction": "ਭਵਿੱਖਬਾਣੀ:",
+                "outro": "ਬ੍ਰੀਫਿੰਗ ਸਮਾਪਤ।"
+            }
+        }
         
-        # Optional: Translate labels for major languages if language != 'en'
-        if language == "pa":
-            intro = f"{topic} ਦੇ ਸਬੰਧ ਵਿੱਚ ਖੁਫੀਆ ਜਾਣਕਾਰੀ।"
-            summary_label = "ਆਮ ਸੰਖੇਪ:"
-            entities_label = "ਸ਼ਾਮਲ ਮੁੱਖ ਇਕਾਈਆਂ:"
-            insight_label = f"{persona} ਲਈ ਜਾਣਕਾਰੀ:"
-            takeaway_label = "ਰਣਨੀਤਕ ਸਿੱਟਾ:"
-            prediction_label = "ਭਵਿੱਖਬਾਣੀ:"
-            outro = "ਬ੍ਰੀਫਿੰਗ ਸਮਾਪਤ।"
-        elif language == "hi":
-            intro = f"{topic} के संबंध में खुफिया जानकारी।"
-            summary_label = "सामान्य सारांश:"
-            entities_label = "शामिल प्रमुख इकाइयां:"
-            insight_label = f"{persona} के लिए जानकारी:"
-            takeaway_label = "रणनीतिक निष्कर्ष:"
-            prediction_label = "भविष्यवाणी:"
-            outro = "ब्रीफिंग समाप्त।"
-
+        l = labels.get(language, labels["en"])
+        
         audio_script = f"""
-        {intro}
+        {l['intro']}
         
-        {summary_label} {summary}.
+        {l['summary']} {summary}.
         
-        {entities_label} {entities_text}.
+        {l['entities']} {entities_text}.
         
-        {insight_label} {persona_brief.get('summary', '')}.
+        {l['insight']} {persona_brief.get('summary', '')}.
         
-        {takeaway_label} {persona_brief.get('final_assessment', '')}.
+        {l['takeaway']} {persona_brief.get('final_assessment', '')}.
         
-        {prediction_label} {analysis.get('prediction', '')}.
+        {l['prediction']} {prediction}.
         
-        {outro}
+        {l['outro']}
         """
         audio_url = _generate_audio(audio_script, topic, lang=language)
-
-        if not summary:
-            summary = f"Intelligence synthesis for {topic} is currently matching multiple narrative clusters across verified sources."
-
-        # Enforce all 4 angle keys
-        for key in ["market_impact", "expert_opinion", "risks", "opportunities"]:
-            if not angles.get(key):
-                angles[key] = f"Analyzing specific {key.replace('_', ' ')} for {topic}..."
 
         briefing = {
             "title": f"Intelligence Briefing: {topic}",
@@ -264,10 +245,9 @@ def delivery_agent(state: PipelineState) -> dict:
             "prediction": prediction,
 
             "key_entities": analysis.get("key_entities", [])[:10],
-            "entities_metadata": analysis.get("entities_metadata", []), # Critical for UI links
+            "entities_metadata": analysis.get("entities_metadata", []),
             "sentiment": analysis.get("sentiment", "neutral"),
-            "sources": sources[:5],  # Limit to top 5
-            "translated_summary": translated_summary,
+            "sources": sources[:5],
             "bias_score": bias_score,
             "compliance_status": "Passed" if state.get("compliance_passed") else "Caution",
 

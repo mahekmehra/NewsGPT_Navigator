@@ -112,7 +112,7 @@ def fetch_agent(state: PipelineState) -> dict:
             scored_articles.append(article)
             quality_scores.append(score)
 
-        # Filter: Ignore sources below 0.6 (unless no alternatives exist)
+        # Filter: Ignore sources below 0.6 (unless no alternatives exist or count is low)
         reliable_candidates = [
             a for a in scored_articles
             if a["credibility_score"] >= 0.6
@@ -120,17 +120,17 @@ def fetch_agent(state: PipelineState) -> dict:
             and is_source_acceptable(a.get("source_domain", ""))
         ]
         
-        if reliable_candidates:
+        if len(reliable_candidates) >= 2:
             verified_articles = reliable_candidates
             source_quality_summary = f"High reliability. Filtered {len(verified_articles)} sources with credibility score ≥ 0.6."
         else:
-            # Fallback to previously accepted baseline
+            # Fallback to previously accepted baseline if high-credibility sources are sparse
             verified_articles = [
                 a for a in scored_articles
                 if a["quality_score"] >= settings.QUALITY_THRESHOLD
                 and is_source_acceptable(a.get("source_domain", ""))
             ]
-            source_quality_summary = "Low reliability. Insufficient highly credible sources found; fell back to available alternatives."
+            source_quality_summary = "Mixed reliability. Insufficient highly credible sources found; using available quality-matched alternatives."
         
         # Enforce domain diversity (at least 3 unique domains)
         diversity_limit = 3

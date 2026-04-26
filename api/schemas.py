@@ -188,3 +188,22 @@ class LanguageInfo(BaseModel):
     """A supported language entry."""
     code: str
     name: str
+
+
+# ── Comparison Models ───────────────────────────────────────────────
+
+class CompareRequest(BaseModel):
+    """Request body for the /compare endpoint."""
+    topic: str = Field(..., min_length=2, max_length=200)
+    persona_a: str = "Investor"
+    persona_b: str = "Student"
+    language: str = "en"
+    knowledge_session_id: str = ""
+
+
+class CompareResponse(BaseModel):
+    """Dual-persona response from the /compare endpoint."""
+    success: bool
+    left: Optional[AnalyzeResponse] = None
+    right: Optional[AnalyzeResponse] = None
+    error: str = ""

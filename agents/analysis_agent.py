@@ -23,10 +23,11 @@ def analysis_agent(state: PipelineState) -> dict:
     - Generates predictions and audio-ready summaries
     """
 
-    from core.embeddings import build_index, search, clear_index
+    from core.embeddings import build_index, search
     from core.llm_router import classify_complexity, call_llm
 
     topic = state.get("topic", "")
+    language = state.get("language", "en")
     verified_articles = state.get("verified_articles", [])
     timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -34,7 +35,7 @@ def analysis_agent(state: PipelineState) -> dict:
         "timestamp": timestamp,
         "agent": "analysis",
         "action": "analyze_articles",
-        "inputs": {"topic": topic, "article_count": len(verified_articles)},
+        "inputs": {"topic": topic, "article_count": len(verified_articles), "language": language},
         "outputs": {},
     }
 
@@ -49,7 +50,7 @@ def analysis_agent(state: PipelineState) -> dict:
             }
 
         # ── Build FAISS Index ──
-        clear_index()
+        # Note: clear_index() removed to allow reuse across parallel persona queries
         texts = [
             f"{a.get('title', '')}. {a.get('content', '') or a.get('description', '')}"
             for a in verified_articles
@@ -63,51 +64,72 @@ def analysis_agent(state: PipelineState) -> dict:
         rag_results = search(topic, top_k=5) if embeddings_built else []
         context = "\n\n---\n\n".join([r["text"] for r in rag_results])
 
-        # Main synthesis prompt
+        # Main consolidated synthesis prompt
         synthesis_prompt = f"""
-Analyze the news about "{topic}" and provide high-value intelligence.
+        Analyze the news about "{topic}" and provide high-value intelligence.
+        
+        TARGET LANGUAGE: {language}
+        You MUST respond in {language}. Use the NATIVE script for {language} (e.g. Gurmukhi for Punjabi, Devanagari for Hindi, Arabic script for Urdu, Hanzi for Chinese, etc.).
+        DO NOT use Romanized transliteration. All text fields in the JSON must be in the native script of {language}.
 
-1. Summary: A professional 3-4 sentence overview of the main event.
-2. Market Impact: Strategic outlook for industries and markets.
-3. Risks: Key threats or negative developments.
-4. Opportunities: Growth potential or positive shifts.
-5. Expert Opinion: Contrast different viewpoints or public narratives.
+        1. Summary: A professional 3-4 sentence overview of the main event.
+        2. Market Impact: Strategic outlook for industries and markets.
+        3. Risks: Key threats or negative developments.
+        4. Opportunities: Growth potential or positive shifts.
+        5. Expert Opinion: Contrast different viewpoints or public narratives.
+        6. Future Prediction: A 2-3 line realistic forecast based on current data.
+        7. Concise Narration: Under 20 words for smooth voice narration.
 
-ARTICLES:
-{context}
+        ARTICLES:
+        {context}
 
-Respond in STRICT JSON:
-{{
-    "summary": "Full overview text...",
-    "key_entities": ["Entity A", "Entity B"],
-    "sentiment": "positive|negative|neutral|mixed",
-    "market_impact": "impact text...",
-    "risks": "risk text...",
-    "opportunities": "opportunity text...",
-    "expert_opinion": "expert text..."
-}}"""
+        Respond in STRICT JSON:
+        {{
+            "summary": "Full overview text...",
+            "key_entities": ["Entity A", "Entity B"],
+            "sentiment": "positive|negative|neutral|mixed",
+            "market_impact": "impact text...",
+            "risks": "risk text...",
+            "opportunities": "opportunity text...",
+            "expert_opinion": "expert text...",
+            "prediction": "Future forecast...",
+            "concise_summary": "Short narration summary..."
+        }}"""
 
         response = call_llm(
             prompt=synthesis_prompt,
-            system_prompt="Return valid JSON only.",
+            system_prompt=f"You are a precise news analyst. Respond strictly in {language} JSON using its native script.",
             complexity=complexity,
         )
 
         data = safe_json_parse(response, {})
+        prediction = data.get("prediction", "Future outlook pending further data.")
+        concise_summary = data.get("concise_summary", "Briefing for topic.")
 
-        # ── Timeline (with Source Mapping) ──
+        # ── Timeline (Improved Logic) ──
         timeline_prompt = f"""
-        Extract key timeline events from:
+        Extract a comprehensive chronological timeline of events for "{topic}".
+        
+        TARGET LANGUAGE: {language}
+        You MUST respond in {language} using its native script.
+
+        INSTRUCTIONS:
+        1. Extract ALL significant events with specific dates.
+        2. If a specific date is missing but can be inferred (e.g. 'yesterday', 'last week'), calculate it based on today: {datetime.now().strftime('%Y-%m-%d')}.
+        3. Ensure events are in strict chronological order.
+        4. Provide at least 5-8 events if the data allows.
+        5. For each event, provide a 'source_hint' (article snippet or title).
+
+        CONTEXT:
         {context}
 
-        For each event, specify which article it comes from (provide a short title or index).
-        Return JSON:
-        {{"timeline":[{{"date":"...","event":"...", "source_hint":"..."}}]}}
+        Return STRICT JSON:
+        {{"timeline":[{{"date":"YYYY-MM-DD","event":"...", "source_hint":"..."}}]}}
         """
 
         timeline_resp = call_llm(
             prompt=timeline_prompt,
-            system_prompt="Return valid JSON. Be accurate with dates.",
+            system_prompt=f"You are a historical data extractor. Return valid JSON in {language} using its native script.",
             complexity="simple",
         )
 
@@ -130,31 +152,6 @@ Respond in STRICT JSON:
         
         if not timeline:
             timeline = [{"date": "N/A", "event": "No major timeline events available", "source_title": "N/A", "url": ""}]
-
-        # ── Prediction ──
-        prediction_prompt = f"""
-Based on this:
-{data.get("summary","")[:1000]}
-
-Give 2-3 line future prediction.
-"""
-
-        prediction = call_llm(
-            prompt=prediction_prompt,
-            system_prompt="Be realistic and concise.",
-            complexity=complexity,
-        )
-
-        # Audio-ready concise summary
-        concise_prompt = f"""
-Summarize this news in UNDER 20 words for smooth voice narration:
-{data.get("summary","")[:1000]}
-"""
-        concise_summary = call_llm(
-            prompt=concise_prompt,
-            system_prompt="Short, one-line, professional narration.",
-            complexity="simple",
-        )
 
         # ── Entities with Article Links ──
         entities_metadata = []

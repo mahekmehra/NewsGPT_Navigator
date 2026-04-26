@@ -5,6 +5,7 @@ Sentence-transformers embeddings with FAISS vector store for RAG.
 """
 
 import numpy as np
+import threading
 from typing import Optional
 
 from core.config import settings
@@ -12,6 +13,7 @@ from core.config import settings
 _model = None
 _index = None
 _documents = []
+_lock = threading.Lock()
 
 
 def _get_model():
@@ -26,12 +28,13 @@ def _get_model():
 def build_index(texts: list[str]) -> bool:
     """
     Build a FAISS index from a list of text documents.
+    Reuses existing index if documents match.
 
     Args:
         texts: List of document strings to index
 
     Returns:
-        True if index built successfully
+        True if index is ready
     """
     global _index, _documents
     import faiss
@@ -39,26 +42,34 @@ def build_index(texts: list[str]) -> bool:
     if not texts:
         return False
 
-    try:
-        model = _get_model()
-        embeddings = model.encode(texts, show_progress_bar=False)
-        embeddings = np.array(embeddings, dtype="float32")
+    with _lock:
+        # Check if index already exists and documents match
+        if _index is not None and _documents == texts:
+            print(f"[Embeddings] Reusing existing index with {len(_documents)} documents.")
+            return True
 
-        # Normalize for cosine similarity
-        faiss.normalize_L2(embeddings)
+        try:
+            model = _get_model()
+            embeddings = model.encode(texts, show_progress_bar=False)
+            embeddings = np.array(embeddings, dtype="float32")
 
-        # Build index
-        dimension = embeddings.shape[1]
-        _index = faiss.IndexFlatIP(dimension)  # Inner product (cosine after normalization)
-        _index.add(embeddings)
-        _documents = texts
+            # Normalize for cosine similarity
+            faiss.normalize_L2(embeddings)
 
-        print(f"[Embeddings] Built FAISS index with {len(texts)} documents, dim={dimension}")
-        return True
+            # Build index
+            dimension = embeddings.shape[1]
+            new_index = faiss.IndexFlatIP(dimension)  # Inner product (cosine after normalization)
+            new_index.add(embeddings)
+            
+            _index = new_index
+            _documents = texts
 
-    except Exception as e:
-        print(f"[Embeddings] Error building index: {e}")
-        return False
+            print(f"[Embeddings] Built FAISS index with {len(texts)} documents, dim={dimension}")
+            return True
+
+        except Exception as e:
+            print(f"[Embeddings] Error building index: {e}")
+            return False
 
 
 def search(query: str, top_k: int = None) -> list[dict]:
@@ -89,6 +100,7 @@ def search(query: str, top_k: int = None) -> list[dict]:
         query_embedding = np.array(query_embedding, dtype="float32")
         faiss.normalize_L2(query_embedding)
 
+        # Search is usually thread-safe for reading
         scores, indices = _index.search(query_embedding, top_k)
 
         results = []
@@ -110,5 +122,6 @@ def search(query: str, top_k: int = None) -> list[dict]:
 def clear_index():
     """Clear the current index and documents."""
     global _index, _documents
-    _index = None
-    _documents = []
+    with _lock:
+        _index = None
+        _documents = []

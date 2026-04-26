@@ -36,8 +36,14 @@ def conflict_agent(state: PipelineState) -> dict:
     }
 
     try:
-        if len(verified_articles) < 2:
-            audit_entry["outputs"] = {"info": "Need at least 2 articles for conflict detection"}
+        # Fallback logic: if verified_articles are sparse, use raw fetched articles for conflict surface area
+        articles_to_analyze = verified_articles
+        if len(articles_to_analyze) < 2:
+            articles_to_analyze = state.get("articles", [])
+            audit_entry["outputs"]["info"] = "Using raw articles for conflict detection (insufficient verified articles)"
+
+        if len(articles_to_analyze) < 2:
+            audit_entry["outputs"]["info"] = "Need at least 2 articles for conflict detection"
             return {
                 "conflicts": [],
                 "conflicts_detected": False,
@@ -47,51 +53,52 @@ def conflict_agent(state: PipelineState) -> dict:
 
         # Build article pairs text for conflict detection
         articles_text = ""
-        for i, art in enumerate(verified_articles[:10]):  # Cap at 10 articles
+        for i, art in enumerate(articles_to_analyze[:8]):  # Cap at 8 articles to stay within context limits
             title = art.get("title", "")
             content = art.get("content", "") or art.get("description", "")
             source = art.get("source", "Unknown")
-            articles_text += f"\n--- Article {i+1} (Source: {source}): {title} ---\n{content[:500]}\n"
+            # Increase snippet size to 1500 for better conflict surface area
+            articles_text += f"\n--- Article {i+1} (Source: {source}): {title} ---\n{content[:1500]}\n"
 
-        conflict_prompt = f"""Analyze these news articles about "{topic}" and identify where they DISAGREE with each other.
+        conflict_prompt = f"""Analyze these news articles about "{topic}" and identify where they DISAGREE with each other or provide contradictory narratives.
+        
+        Look for these conflict types:
+        1. FACTUAL: Different numbers, dates, statistics, or explicitly contradictory claims.
+        2. INTERPRETIVE: Significant differences in framing, tone, or explanation of the same event (e.g. one calls it a 'strategic shift' while another calls it a 'failure').
+        3. PREDICTIVE: Different forecasts or expert opinions about what will happen next.
 
-Look for three types of conflicts:
-1. FACTUAL: Different numbers, dates, or stated facts
-2. INTERPRETIVE: Different framings or explanations of the same event
-3. PREDICTIVE: Different forecasts about what will happen next
+        ARTICLES:
+        {articles_text}
 
-ARTICLES:
-{articles_text[:4000]}
+        For each conflict found, identify:
+        - The type (factual/interpretive/predictive)
+        - The specific claim from Article A and its source
+        - The contradicting claim from Article B and its source
+        - The entity or topic at the center of the conflict
+        - Severity (high/medium/low)
+        - Brief explanation of why these viewpoints are in conflict.
 
-For each conflict found, identify:
-- The type (factual/interpretive/predictive)
-- The specific claim from Article A and its source
-- The contradicting claim from Article B and its source
-- The entity or topic at the center of the conflict
-- Severity (high/medium/low)
-- Brief explanation of the disagreement
-
-Respond in this exact JSON format:
-{{
-    "conflicts": [
+        Respond in this exact JSON format:
         {{
-            "conflict_type": "factual",
-            "claim_a": "The investment totals $1.2 billion",
-            "source_a": "Reuters (Article 1)",
-            "claim_b": "The investment is approximately $800 million",
-            "source_b": "Bloomberg (Article 3)",
-            "entity": "AI Mission Budget",
-            "severity": "high",
-            "explanation": "The two sources disagree on the total investment amount by $400 million."
+            "conflicts": [
+                {{
+                    "conflict_type": "factual|interpretive|predictive",
+                    "claim_a": "...",
+                    "source_a": "...",
+                    "claim_b": "...",
+                    "source_b": "...",
+                    "entity": "...",
+                    "severity": "high|medium|low",
+                    "explanation": "..."
+                }}
+            ]
         }}
-    ]
-}}
 
-If no conflicts are found, return {{"conflicts": []}}"""
+        If no conflicts are found, return {{"conflicts": []}}"""
 
         response = call_llm(
             prompt=conflict_prompt,
-            system_prompt="You are a precise fact-checker and narrative analyst. Detect genuine disagreements, not just different emphases. Always respond in valid JSON.",
+            system_prompt="You are a meticulous narrative analyst. Your goal is to surface deep disagreements and contradictions between different news sources. Be thorough. Always respond in valid JSON.",
             complexity="complex",
         )
 

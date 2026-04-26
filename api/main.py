@@ -8,12 +8,14 @@ Orchestrates the full 10-agent LangGraph pipeline.
 
 import uuid
 import os
+import asyncio
 from pathlib import Path
 from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from anyio import to_thread
 from agents.delivery_agent import AUDIO_OUTPUT_DIR
 
 VIDEO_OUTPUT_DIR = os.path.join(
@@ -30,6 +32,8 @@ from api.schemas import (
     HealthResponse,
     UserProfileResponse,
     EmotionalRegisterResponse,
+    CompareRequest,
+    CompareResponse,
 )
 from core.config import settings
 
@@ -49,6 +53,38 @@ app.add_middleware(
 
 # In-memory session store for audit trail lookups
 _sessions: dict = {}
+
+
+def _map_pipeline_result(result: dict) -> AnalyzeResponse:
+    """Helper to map raw pipeline dict to AnalyzeResponse schema."""
+    briefing_data = result.get("briefing") or {}
+    briefing = BriefingResponse(**briefing_data) if briefing_data else None
+
+    user_profile = (
+        UserProfileResponse(**result.get("user_profile", {}))
+        if result.get("user_profile") else None
+    )
+    emotional_register = (
+        EmotionalRegisterResponse(**result.get("emotional_register", {}))
+        if result.get("emotional_register") else None
+    )
+
+    return AnalyzeResponse(
+        success=result.get("pipeline_status") == "completed",
+        briefing=briefing,
+        entity_sentiments=result.get("entity_sentiments", []),
+        angle_clusters=result.get("angle_clusters", []),
+        user_profile=user_profile,
+        conflicts=result.get("conflicts", []),
+        emotional_register=emotional_register,
+        story_arc=result.get("story_arc", []),
+        audit_trail=result.get("audit_trail", []),
+        error=result.get("error", ""),
+        pipeline_status=result.get("pipeline_status", "unknown"),
+        articles_fetched=len(result.get("articles", [])),
+        articles_verified=len(result.get("verified_articles", [])),
+        verified_articles=result.get("verified_articles", []),
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -77,12 +113,13 @@ async def analyze_topic(request: AnalyzeRequest):
         valid_languages = list(settings.SUPPORTED_LANGUAGES.keys())
         language = request.language if request.language in valid_languages else "en"
 
-        result = run_pipeline(
-            topic=request.topic,
-            persona=persona,
-            language=language,
-            knowledge_session_id=request.knowledge_session_id or session_id,
-            custom_persona=getattr(request, "custom_persona", ""),
+        result = await to_thread.run_sync(
+            run_pipeline,
+            request.topic,
+            persona,
+            language,
+            request.knowledge_session_id or session_id,
+            getattr(request, "custom_persona", "")
         )
 
         _sessions[session_id] = {
@@ -91,38 +128,49 @@ async def analyze_topic(request: AnalyzeRequest):
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        # Map pipeline result to response schema
-        briefing_data = result.get("briefing") or {}
-        briefing = BriefingResponse(**briefing_data) if briefing_data else None
+        return _map_pipeline_result(result)
 
-        user_profile = (
-            UserProfileResponse(**result.get("user_profile", {}))
-            if result.get("user_profile") else None
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
+
+
+@app.post("/compare", response_model=CompareResponse)
+async def compare_personas(request: CompareRequest):
+    """Run two pipelines in parallel for persona comparison."""
+    from agents.orchestrator import run_pipeline
+
+    session_id = request.knowledge_session_id or str(uuid.uuid4())
+    valid_languages = list(settings.SUPPORTED_LANGUAGES.keys())
+    language = request.language if request.language in valid_languages else "en"
+
+    try:
+        # Run both pipelines in parallel using anyio thread pool
+        # This allows them to run concurrently without blocking the main event loop
+        left_task = to_thread.run_sync(
+            run_pipeline, request.topic, request.persona_a, language, session_id
         )
-        emotional_register = (
-            EmotionalRegisterResponse(**result.get("emotional_register", {}))
-            if result.get("emotional_register") else None
+        right_task = to_thread.run_sync(
+            run_pipeline, request.topic, request.persona_b, language, session_id
         )
 
-        return AnalyzeResponse(
-            success=result.get("pipeline_status") == "completed",
-            briefing=briefing,
-            entity_sentiments=result.get("entity_sentiments", []),
-            angle_clusters=result.get("angle_clusters", []),
-            user_profile=user_profile,
-            conflicts=result.get("conflicts", []),
-            emotional_register=emotional_register,
-            story_arc=result.get("story_arc", []),
-            audit_trail=result.get("audit_trail", []),
-            error=result.get("error", ""),
-            pipeline_status=result.get("pipeline_status", "unknown"),
-            articles_fetched=len(result.get("articles", [])),
-            articles_verified=len(result.get("verified_articles", [])),
-            verified_articles=result.get("verified_articles", []),
+        results = await asyncio.gather(left_task, right_task)
+        
+        left_res = _map_pipeline_result(results[0])
+        right_res = _map_pipeline_result(results[1])
+
+        return CompareResponse(
+            success=left_res.success and right_res.success,
+            left=left_res,
+            right=right_res,
+            error=left_res.error or right_res.error
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return CompareResponse(success=False, error=str(e))
 
 
 @app.get("/audio/{filename}")
